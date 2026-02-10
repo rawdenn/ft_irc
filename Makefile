@@ -3,26 +3,31 @@ NAME = ircserv
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -std=c++98
 
-SRCS := main.cpp \
-        Server.cpp \
-        Client.cpp \
-        Channel.cpp
+SRCS = srcs/main.cpp \
+       srcs/Server.cpp \
+       srcs/Client.cpp \
+       srcs/Channel.cpp \
+       srcs/Commands.cpp
 
-OBJS = $(SRCS:.cpp=.o)
+OBJDIR = objs
+OBJS = $(patsubst srcs/%.cpp,$(OBJDIR)/%.o,$(SRCS))
 
 all: $(NAME)
 
 $(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $(NAME)
 
-%.o: %.cpp
+$(OBJDIR)/%.o: srcs/%.cpp | $(OBJDIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+
 clean:
-	$(RM) $(OBJS)
+	rm -rf $(OBJDIR)
 
 fclean: clean
-	$(RM) $(NAME)
+	rm -f $(NAME)
 
 re: fclean all
 
