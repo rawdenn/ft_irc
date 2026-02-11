@@ -1,4 +1,8 @@
-#include "Commands.hpp"
+#include "../includes/Commands.hpp"
+
+Commands::Commands(Server &server) : server(server) {}
+
+Commands::~Commands() {}
 
 //for example, split "USER username 0 * :Real Name" into ["USER", "username", "0", "*", ":Real Name"]
 std::vector<std::string> split(const std::string &s, char delimiter)
@@ -19,8 +23,10 @@ std::vector<std::string> split(const std::string &s, char delimiter)
     return tokens;
 }
 
-void handleCommand(Server &server, Client &client, const std::string &cmd)
+void Commands::execute(Server &server, Client &client, std::string &cmd)
 {
+    server = server; //just for bcuz it's unused for now
+    
     std::vector<std::string> tokens = split(cmd, ' ');
     if (tokens.empty())
         return;
@@ -29,22 +35,11 @@ void handleCommand(Server &server, Client &client, const std::string &cmd)
 
     if (command == "PASS")
     {
-        if (tokens.size() < 2)
-        {
-            // sendReply(client, "461 PASS :Not enough parameters");
-            return;
-        }
-
-        if (tokens[1] == server.getPassword())
-            client.setPassAccepted(true);
-        else
-        {
-            // sendReply(client, "464 :Wrong password");
-        }
+        // later
     }
     else if (!client.isPassAccepted())
     {
-        // sendReply(client, "451 :You have not registered");
+        // later
     }
     else if (command == "NICK")
     {
@@ -59,4 +54,3 @@ void handleCommand(Server &server, Client &client, const std::string &cmd)
             client.setRegistered(true);
     }
 }
-

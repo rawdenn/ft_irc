@@ -1,4 +1,4 @@
-#include "Client.hpp"
+#include "../includes/Client.hpp"
 
 Client::Client(int fd)
 {
@@ -92,9 +92,9 @@ bool Client::hasCompleteCommand() const
     return this->buffer.find("\r\n") != std::string::npos;
 }
 
+// Extract the command from the buffer
 std::string Client::extractCommand()
 {
-    // Extract the command from the buffer
     std::string command;
     std::size_t pos = this->buffer.find("\r\n");
     if (pos != std::string::npos)

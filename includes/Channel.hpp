@@ -13,14 +13,17 @@
 #ifndef CHANNEL_HPP
 #define CHANNEL_HPP
 
-#include "Server.hpp"
+#include <string>
+#include <vector>
+
+class Client;
 
 class Channel
 {
 private:
     std::string name;
     std::string topic;
-    std::map<int, Client *> clients;
+    // std::map<int, Client *> clients;
     std::vector<int> operators;
     std::string key;
     int userLimit;
