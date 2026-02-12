@@ -183,7 +183,7 @@ void Server::handleClientMessage(int fd)
 
 void Server::executeCommand(Client &client, std::string command)
 {
-    Commands commands(*this);
+    Commands commands;
     commands.execute(*this, client, command);
 }
 

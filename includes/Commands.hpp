@@ -4,10 +4,8 @@
 
 class Commands
 {
-private:
-    Server &server;
 public:
-    Commands(Server &server);
+    Commands();
     ~Commands();
     void execute(Server& server, Client& client, std::string& cmd);
 };

@@ -1,6 +1,7 @@
 #include "../includes/Commands.hpp"
 
-Commands::Commands(Server &server) : server(server) {}
+Commands::Commands()
+{};
 
 Commands::~Commands() {}
 
@@ -25,14 +26,15 @@ std::vector<std::string> split(const std::string &s, char delimiter)
 
 void Commands::execute(Server &server, Client &client, std::string &cmd)
 {
-    server = server; //just for bcuz it's unused for now
-    
+
+    (void)server;
     std::vector<std::string> tokens = split(cmd, ' ');
     if (tokens.empty())
         return;
 
     std::string command = tokens[0];
 
+    //TO-DO: replace this logic here later(after exec of all commands + adding them to a map)
     if (command == "PASS")
     {
         // later

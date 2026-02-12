@@ -87,21 +87,42 @@ void Client::appendBuffer(const std::string& data)
 }
 
 // Check if the buffer contains a complete command
-bool Client::hasCompleteCommand() const
+// bool Client::hasCompleteCommand() const
+// {
+//     return this->buffer.find("\r\n") != std::string::npos;
+// }
+
+bool Client::hasCompleteCommand() const //this is temp while we figure out the \r
 {
-    return this->buffer.find("\r\n") != std::string::npos;
+    return this->buffer.find("\n") != std::string::npos;
 }
+
+#include <iostream>
+// bool Client::hasCompleteCommand() const //this is for testing only
+// {
+//     std::cout << "Buffer ASCII: ";
+
+//     for (size_t i = 0; i < buffer.size(); ++i)
+//     {
+//         std::cout << static_cast<int>(static_cast<unsigned char>(buffer[i])) << " ";
+//     }
+
+//     std::cout << std::endl;
+
+//     return buffer.find("\r\n") != std::string::npos;
+// }
 
 // Extract the command from the buffer
 std::string Client::extractCommand()
 {
     std::string command;
-    std::size_t pos = this->buffer.find("\r\n");
+    std::size_t pos = this->buffer.find("\n"); //temp while we figure out \r
     if (pos != std::string::npos)
     {
         command = this->buffer.substr(0, pos);
-        this->buffer.erase(0, pos + 2); // remove command with \r\n
+        this->buffer.erase(0, pos + 1); // remove command with \r\n
     }
+    std::cout<<"command is:"<<command<<std::endl;
     return command;
 }
 
