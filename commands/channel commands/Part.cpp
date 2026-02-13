@@ -1,5 +1,5 @@
-ART #channel
+// ART #channel
 
-    Remove user from channel
+//     Remove user from channel
 
-    Notify others
+//     Notify others

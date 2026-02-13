@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <cstdio>
+#include <cerrno>
 #include "Client.hpp"
 #include "Channel.hpp"
 

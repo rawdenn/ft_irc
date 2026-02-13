@@ -1,7 +1,7 @@
 #include "../includes/Server.hpp"
 #include "../includes/Commands.hpp"
 
-//see notes in Server.hpp
+// see notes in Server.hpp
 static void set_non_blocking(int fd)
 {
     int flags = fcntl(fd, F_GETFL, 0);
@@ -18,8 +18,8 @@ Server::Server(int port, const std::string &password)
     this->running = false;
 
     // we create socket here...
-    serverFd = socket(AF_INET, SOCK_STREAM, 0);
-    if (serverFd < 0)
+    this->serverFd = socket(AF_INET, SOCK_STREAM, 0);
+    if (this->serverFd < 0)
     {
         perror("socket");
         exit(1);
@@ -28,7 +28,7 @@ Server::Server(int port, const std::string &password)
     {
         // Allow reuse of port
         int opt = 1;
-        setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+        setsockopt(this->serverFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
     }
 }
 
@@ -59,6 +59,8 @@ void Server::run()
         exit(1);
     }
 
+    set_non_blocking(serverFd);
+
     // Add server socket to pollFds
     pollfd server_poll;
     server_poll.fd = serverFd;
@@ -70,7 +72,7 @@ void Server::run()
 
     while (running)
     {
-        if (poll(pollFds.data(), pollFds.size(), -1) < 0)
+        if (poll(&pollFds[0], pollFds.size(), -1) < 0)
         {
             perror("poll");
             break;
@@ -84,7 +86,7 @@ void Server::run()
                     acceptClient();
                 else
                 {
-                    //needs more handling later
+                    // needs more handling later
                     handleClientMessage(pollFds[i].fd);
                 }
             }
@@ -98,12 +100,8 @@ void Server::shutdown()
         return;
 
     running = false;
-    close(serverFd);
     for (std::vector<pollfd>::iterator it = pollFds.begin(); it != pollFds.end(); ++it)
-    {
         close(it->fd);
-    }
-
     pollFds.clear();
     clients.clear();
     channels.clear();
@@ -122,7 +120,9 @@ void Server::acceptClient()
     int client_fd = accept(serverFd, (sockaddr *)&client_addr, &client_len);
     if (client_fd < 0)
     {
-        perror("accept");
+        // in non-blocking mode, accept can return EWOULDBLOCK or EAGAIN if there are no pending connections
+        // if (errno != EWOULDBLOCK && errno != EAGAIN)
+            perror("accept");
         return;
     }
 
@@ -137,6 +137,7 @@ void Server::acceptClient()
     std::cout << "New client connected: " << client_fd << std::endl;
 }
 
+// should change after adding channels
 void Server::removeClient(int fd)
 {
     std::map<int, Client>::iterator it = clients.find(fd);
@@ -166,9 +167,16 @@ void Server::handleClientMessage(int fd)
     memset(buffer, 0, sizeof(buffer));
 
     int bytes = recv(fd, buffer, sizeof(buffer) - 1, 0);
-    if (bytes <= 0)
+    if (bytes == 0)
     {
+        // client closed connection
         removeClient(fd);
+        return;
+    }
+    if (bytes < 0)
+    {
+        if (errno != EWOULDBLOCK && errno != EAGAIN)
+            removeClient(fd);
         return;
     }
 

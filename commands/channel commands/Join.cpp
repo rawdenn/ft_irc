@@ -1,20 +1,20 @@
-JOIN #channel
-JOIN #channel key
+// JOIN #channel
+// JOIN #channel key
 
-    Create channel if it doesn't exist
+//     Create channel if it doesn't exist
 
-    Add client to channel
+//     Add client to channel
 
-    Send JOIN message to channel
+//     Send JOIN message to channel
 
-    Send topic (if exists)
+//     Send topic (if exists)
 
-    Send user list (NAMES reply)
+//     Send user list (NAMES reply)
 
-Must check:
+// Must check:
 
-    +i invite only
+//     +i invite only
 
-    +k password
+//     +k password
 
-    +l user limit
+//     +l user limit

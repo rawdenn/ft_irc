@@ -1,7 +1,7 @@
-QUIT :message
+// QUIT :message
 
-    Remove client from all channels
+//     Remove client from all channels
 
-    Notify others
+//     Notify others
 
-    Close connection / exit server
+//     Close connection / exit server

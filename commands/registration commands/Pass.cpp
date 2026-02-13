@@ -7,7 +7,7 @@ void _Pass(std::string password, Client *client, Server *server)
     {
         if(password == server->getPassword())
         {
-            client.setPassAccepted(true);
+            client->setPassAccepted(true);
         }
     }
 

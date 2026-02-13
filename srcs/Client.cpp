@@ -1,4 +1,5 @@
 #include "../includes/Client.hpp"
+#include <iostream>
 
 Client::Client(int fd)
 {
@@ -11,7 +12,7 @@ Client::Client(int fd)
     this->passAccepted = false;
 }
 
-Client::Client(int fd, const std::string& nick, const std::string& user, const std::string& real)
+Client::Client(int fd, const std::string &nick, const std::string &user, const std::string &real)
 {
     this->fd = fd;
     this->nickname = nick;
@@ -41,32 +42,32 @@ bool Client::isPassAccepted() const
     return this->passAccepted;
 }
 
-const std::string& Client::getNickname() const
+const std::string &Client::getNickname() const
 {
     return this->nickname;
 }
 
-const std::string& Client::getUsername() const
+const std::string &Client::getUsername() const
 {
     return this->username;
 }
 
-const std::string& Client::getRealname() const
+const std::string &Client::getRealname() const
 {
     return this->realname;
 }
 
-void Client::setNickname(const std::string& nick)
+void Client::setNickname(const std::string &nick)
 {
     this->nickname = nick;
 }
 
-void Client::setUsername(const std::string& user)
+void Client::setUsername(const std::string &user)
 {
     this->username = user;
 }
 
-void Client::setRealname(const std::string& real)
+void Client::setRealname(const std::string &real)
 {
     this->realname = real;
 }
@@ -81,23 +82,11 @@ void Client::setRegistered(bool val)
     this->registered = val;
 }
 
-void Client::appendBuffer(const std::string& data)
+void Client::appendBuffer(const std::string &data)
 {
     this->buffer += data;
 }
 
-// Check if the buffer contains a complete command
-// bool Client::hasCompleteCommand() const
-// {
-//     return this->buffer.find("\r\n") != std::string::npos;
-// }
-
-bool Client::hasCompleteCommand() const //this is temp while we figure out the \r
-{
-    return this->buffer.find("\n") != std::string::npos;
-}
-
-#include <iostream>
 // bool Client::hasCompleteCommand() const //this is for testing only
 // {
 //     std::cout << "Buffer ASCII: ";
@@ -112,17 +101,22 @@ bool Client::hasCompleteCommand() const //this is temp while we figure out the \
 //     return buffer.find("\r\n") != std::string::npos;
 // }
 
+bool Client::hasCompleteCommand() const
+{
+    return this->buffer.find("\r\n") != std::string::npos;
+}
+
 // Extract the command from the buffer
 std::string Client::extractCommand()
 {
     std::string command;
-    std::size_t pos = this->buffer.find("\n"); //temp while we figure out \r
+    std::size_t pos = this->buffer.find("\r\n");
     if (pos != std::string::npos)
     {
         command = this->buffer.substr(0, pos);
-        this->buffer.erase(0, pos + 1); // remove command with \r\n
+        this->buffer.erase(0, pos + 2); // remove command with \r\n
     }
-    std::cout<<"command is:"<<command<<std::endl;
+    std::cout << "command is:" << command << std::endl;
     return command;
 }
 
