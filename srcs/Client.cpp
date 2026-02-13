@@ -10,18 +10,24 @@ Client::Client(int fd)
     this->buffer = "";
     this->registered = false;
     this->passAccepted = false;
+    this->hasSentPass = false;
+    this->hasSentNick = false;
+    this->hasSentUser = false;
 }
 
-Client::Client(int fd, const std::string &nick, const std::string &user, const std::string &real)
-{
-    this->fd = fd;
-    this->nickname = nick;
-    this->username = user;
-    this->realname = real;
-    this->buffer = "";
-    this->registered = false;
-    this->passAccepted = false;
-}
+// Client::Client(int fd, const std::string &nick, const std::string &user, const std::string &real)
+// {
+//     this->fd = fd;
+//     this->nickname = nick;
+//     this->username = user;
+//     this->realname = real;
+//     this->buffer = "";
+//     this->registered = false;
+//     this->passAccepted = false;
+//     this->hasSentPass = false;
+//     this->hasSentNick = true;
+//     this->hasSentUser = true;
+// }
 
 Client::~Client()
 {
@@ -34,7 +40,7 @@ int Client::getFd() const
 
 bool Client::isRegistered() const
 {
-    return this->registered;
+    return (hasSentNick && hasSentUser && hasSentPass) || this->registered;
 }
 
 bool Client::isPassAccepted() const
@@ -87,26 +93,12 @@ void Client::appendBuffer(const std::string &data)
     this->buffer += data;
 }
 
-// bool Client::hasCompleteCommand() const //this is for testing only
-// {
-//     std::cout << "Buffer ASCII: ";
-
-//     for (size_t i = 0; i < buffer.size(); ++i)
-//     {
-//         std::cout << static_cast<int>(static_cast<unsigned char>(buffer[i])) << " ";
-//     }
-
-//     std::cout << std::endl;
-
-//     return buffer.find("\r\n") != std::string::npos;
-// }
-
+// run nc -C localhost 6667 la tzbat ma3 \r
 bool Client::hasCompleteCommand() const
 {
     return this->buffer.find("\r\n") != std::string::npos;
 }
 
-// Extract the command from the buffer
 std::string Client::extractCommand()
 {
     std::string command;
@@ -114,23 +106,13 @@ std::string Client::extractCommand()
     if (pos != std::string::npos)
     {
         command = this->buffer.substr(0, pos);
-        this->buffer.erase(0, pos + 2); // remove command with \r\n
+        // If the line ended with CRLF, remove the trailing '\r'
+        // if (!command.empty() && command[command.size() - 1] == '\r')
+        //     command.erase(command.size() - 1, 1);
+        // // Erase the line including the '\n' (1 char). If it was CRLF, the '\r' was part of command and already removed.
+        // this->buffer.erase(0, pos + 1);
+        this->buffer.erase(0, pos + 2);
     }
-    std::cout << "command is:" << command << std::endl;
+    std::cout << "command is: " << command << std::endl;
     return command;
 }
-
-/*
-    Commands before registration:
-        - PASS <password>
-        - NICK <nickname>
-        - USER <username> 0 * :<realname>
-
-    After registration:
-        - JOIN <channel>
-        - PART <channel>
-        - TOPIC <channel> :<topic>
-        - KICK <channel> <user>
-        - MODE <channel> <mode> <user>
-
-*/

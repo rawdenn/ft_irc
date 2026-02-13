@@ -16,6 +16,7 @@ Server::Server(int port, const std::string &password)
     this->password = password;
     this->port = port;
     this->running = false;
+    this->name = "ft_irc_server";
 
     // we create socket here...
     this->serverFd = socket(AF_INET, SOCK_STREAM, 0);
@@ -36,6 +37,21 @@ Server::~Server()
 {
     shutdown();
 }
+
+std::string Server::getName() const
+{
+    return name;
+}
+
+bool Server::isNicknameTaken(const std::string &nick)
+{
+    for (std::map<int, Client>::iterator it = clients.begin(); it != clients.end(); ++it) {
+        if (it->second.getNickname() == nick)
+            return true;
+    }
+    return false;
+}
+
 
 // this isnt final but just for testing connectivity on the port
 void Server::run()

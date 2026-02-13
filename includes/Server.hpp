@@ -26,11 +26,12 @@ class Server
 private:
     int serverFd;
     int port;
+    std::string name;
+    std::string password;
     
     std::vector<pollfd> pollFds;
     std::map<int, Client> clients;           // key is fd
     std::map<std::string, Channel> channels; // key is channel name
-    std::string password;
     bool running; // for clean shutdown
 
 public:
@@ -40,6 +41,8 @@ public:
     void run();
     void shutdown();
     std::string getPassword() const;
+    std::string getName() const;
+    bool isNicknameTaken(const std::string &nick);
 
     // Client management
     void acceptClient();
