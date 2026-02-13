@@ -181,16 +181,17 @@ void Server::handleClientMessage(int fd)
 
     char buffer[1024];
     memset(buffer, 0, sizeof(buffer));
-
+    
     int bytes = recv(fd, buffer, sizeof(buffer) - 1, 0);
+    // client closed connection
     if (bytes == 0)
     {
-        // client closed connection
         removeClient(fd);
         return;
     }
     if (bytes < 0)
     {
+        // in non-blocking mode, recv can return EWOULDBLOCK or EAGAIN if there's no data to read
         if (errno != EWOULDBLOCK && errno != EAGAIN)
             removeClient(fd);
         return;
@@ -211,10 +212,10 @@ void Server::executeCommand(Client &client, std::string command)
     commands.execute(*this, client, command);
 }
 
-Channel *Server::findChannel(const std::string &name)
-{
-    std::map<std::string, Channel>::iterator it = channels.find(name);
-    if (it == channels.end())
-        return 0;
-    return &it->second;
-}
+// Channel *Server::findChannel(const std::string &name)
+// {
+//     std::map<std::string, Channel>::iterator it = channels.find(name);
+//     if (it == channels.end())
+//         return 0;
+//     return &it->second;
+// }

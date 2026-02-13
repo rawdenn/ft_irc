@@ -65,7 +65,7 @@ void Commands::handlePass(Server &server, Client &client, const std::string &par
     // if wrong password, disconnect client
     if (param != server.getPassword())
     {
-        sendNumeric(client, "464", server.getName(), ":Password incorrect");
+        sendNumeric(client, "464", server.getName(), "Password incorrect");
         server.removeClient(client.getFd());
         return;
     }
@@ -73,17 +73,18 @@ void Commands::handlePass(Server &server, Client &client, const std::string &par
     client.hasSentPass = true;
 }
 
-void Commands::handleNick(Server &server, Client &client, const std::string &nickname)
+void Commands::handleNick(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (nickname.empty())
+    if (params.size() < 2)
     {
-        sendNumeric(client, "431", server.getName(), ":No nickname given");
+        sendNumeric(client, "431", server.getName(), "No nickname given");
         return;
     }
 
+    std::string nickname = params[1];
     if (server.isNicknameTaken(nickname))
     {
-        sendNumeric(client, "433", server.getName(), nickname + " :Nickname is already in use");
+        sendNumeric(client, "433", server.getName(), nickname + " Nickname is already in use");
         return;
     }
 
@@ -126,9 +127,6 @@ void Commands::handleUser(Server &server, Client &client, const std::vector<std:
     // std::cout << "Realname extracted: " << realname << std::endl;
     client.setRealname(realname);
     client.hasSentUser = true;
-
-    if (client.isRegistered())
-        sendWelcome(server, client);
 }
 
 void Commands::execute(Server &server, Client &client, std::string &cmd)
@@ -147,8 +145,8 @@ void Commands::execute(Server &server, Client &client, std::string &cmd)
     // TO-DO: replace this logic here later(after exec of all commands + adding them to a map)
     if (command == "PASS")
         handlePass(server, client, tokens[1]);
-    else if (command == "NICK" && tokens.size() > 1)
-        handleNick(server, client, tokens[1]);
+    else if (command == "NICK")
+        handleNick(server, client, tokens);
     else if (command == "USER")
         handleUser(server, client, tokens);
     else if (!client.isPassAccepted())
@@ -156,7 +154,10 @@ void Commands::execute(Server &server, Client &client, std::string &cmd)
         // later
     }
 
-    if (client.isRegistered()) // just testing
-        std::cout << "Client is registered." << std::endl;
+    if (client.isRegistered())
+    {
+        sendWelcome(server, client);
+        std::cout << "Client " << client.getNickname() << " is now registered." << std::endl;
+    }
 
 }
