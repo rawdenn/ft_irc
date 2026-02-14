@@ -1,5 +1,8 @@
-#include "Server.hpp"
-#include "Client.hpp"
+#ifndef COMMANDS_HPP
+# define COMMANDS_HPP
+
+# include "Server.hpp"
+# include "Client.hpp"
 
 class Commands
 {
@@ -14,3 +17,4 @@ public:
     void handleUser(Server &server, Client &client, const std::vector<std::string> &param);
 };
 
+#endif

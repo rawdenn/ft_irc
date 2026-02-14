@@ -1,5 +1,4 @@
 #include "../includes/Client.hpp"
-#include <iostream>
 
 Client::Client(int fd)
 {
@@ -10,6 +9,7 @@ Client::Client(int fd)
     this->buffer = "";
     this->registered = false;
     this->passAccepted = false;
+    this->welcomeSent = false;
     this->hasSentPass = false;
     this->hasSentNick = false;
     this->hasSentUser = false;
@@ -48,6 +48,11 @@ bool Client::isPassAccepted() const
     return this->passAccepted;
 }
 
+bool Client::isWelcomeSent() const
+{
+    return this->welcomeSent;
+}
+
 const std::string &Client::getNickname() const
 {
     return this->nickname;
@@ -81,6 +86,10 @@ void Client::setRealname(const std::string &real)
 void Client::setPassAccepted(bool val)
 {
     this->passAccepted = val;
+}
+void Client::setWelcomeSent(bool val)
+{
+    this->welcomeSent = val;
 }
 
 void Client::setRegistered(bool val)

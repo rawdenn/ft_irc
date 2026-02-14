@@ -6,9 +6,10 @@
 // buffer
 
 #ifndef CLIENT_HPP
-#define CLIENT_HPP
+# define CLIENT_HPP
 
-#include <string>
+# include "ft_irc.h"
+
 class Client
 {
 private:
@@ -19,6 +20,7 @@ private:
     std::string buffer;
     bool registered;
     bool passAccepted;
+    bool welcomeSent;
 
 public:
     // might change later
@@ -32,6 +34,7 @@ public:
     int getFd() const;
     bool isRegistered() const;
     bool isPassAccepted() const;
+    bool isWelcomeSent() const;
 
     const std::string &getNickname() const;
     const std::string &getUsername() const;
@@ -42,6 +45,7 @@ public:
     void setRealname(const std::string &real);
     void setPassAccepted(bool val);
     void setRegistered(bool val);
+    void setWelcomeSent(bool val);
 
     void appendBuffer(const std::string &data);
     bool hasCompleteCommand() const;

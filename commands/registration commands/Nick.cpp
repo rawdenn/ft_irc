@@ -10,27 +10,18 @@
 
 #include "../includes/Server.hpp"
 
-// void _setNickName(std::string nickname, Client *client, Server *server)
-// {
-//     if (!client->isRegistered())
-//     {
-//         std::map<int, Client>::iterator it = clients.begin();
-//         while ()
-//     }
+void _setNickName(std::string nickname, Client *client, Server *server)
+{
+    //TO-DO (maybe?): check if nickname is 1 word or not
+    if (!client->isRegistered())
+    {
+        if(server->isNicknameTaken(nickname) )
+        {
+            std::cout<<"Nickname taken, enter a different one\n"<<std::endl;
+            return ;
+        }
+        client->setNickname(nickname);
 
-// }
+    }
 
-    // if (it != clients.end())
-    //     clients.erase(it);
-
-    // for (size_t i = 0; i < pollFds.size(); ++i)
-    // {
-    //     if (pollFds[i].fd == fd)
-    //     {
-    //         pollFds.erase(pollFds.begin() + i);
-    //         break;
-    //     }
-    // }
-
-    // close(fd);
-    // std::cout << "Client disconnected: " << fd << std::endl;
+}

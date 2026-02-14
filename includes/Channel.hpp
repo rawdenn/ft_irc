@@ -11,31 +11,38 @@
 // MODE (later)
 
 #ifndef CHANNEL_HPP
-#define CHANNEL_HPP
+# define CHANNEL_HPP
 
-#include <string>
-#include <vector>
-
-class Client;
+# include "Client.hpp"
+# include "ft_irc.h"
 
 class Channel
 {
 private:
     std::string name;
     std::string topic;
-    // std::map<int, Client *> clients;
-    std::vector<int> operators;
+    std::map<int, Client *> members;
+    std::set<int> operators;
     std::string key;
     int userLimit;
-
 public:
     Channel();
+    Channel(std::string _name);
     ~Channel();
     
-    void addClient(Client *client);
-    void removeClient(int fd);
-    void broadcast(std::string message, int senderFd);
+    const std::string &getName() const;
+    bool hasMember(int fd);
     bool isOperator(int fd);
+
+    void addMember(Client *client);
+    void removeMember(int fd);
+
+    void addOperator(int fd);
+    void removeOperator(int fd);
+    
+    void broadcast(int senderFd, const std::string &server_name, const std::string &message);
+
+    bool isEmpty() const;
 };
 
 

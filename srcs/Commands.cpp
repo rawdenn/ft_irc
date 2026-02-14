@@ -91,9 +91,10 @@ void Commands::handleNick(Server &server, Client &client, const std::vector<std:
     client.setNickname(nickname);
     client.hasSentNick = true;
 
-    if (client.isRegistered())
+    if (client.isRegistered() && !client.isWelcomeSent())
     {
         sendWelcome(server, client);
+        client.setWelcomeSent(true);
     }
 }
 
@@ -154,10 +155,11 @@ void Commands::execute(Server &server, Client &client, std::string &cmd)
         // later
     }
 
-    if (client.isRegistered())
+    if (client.isRegistered() && !client.isWelcomeSent())
     {
         sendWelcome(server, client);
         std::cout << "Client " << client.getNickname() << " is now registered." << std::endl;
+        client.setWelcomeSent(true);
     }
 
 }

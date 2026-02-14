@@ -4,22 +4,11 @@
 // accept()
 // poll() loop
 #ifndef SERVER_HPP
-#define SERVER_HPP
+# define SERVER_HPP
 
-#include <iostream>
-#include <vector>
-#include <map>
-#include <poll.h>
-#include <cstring>
-#include <cstdlib>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <cstdio>
-#include <cerrno>
-#include "Client.hpp"
-#include "Channel.hpp"
+# include "ft_irc.h"
+# include "Client.hpp"
+# include "Channel.hpp"
 
 class Server
 {
