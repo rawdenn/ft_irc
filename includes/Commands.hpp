@@ -6,17 +6,21 @@
 
 class Commands
 {
+
 public:
+    typedef void (Commands::*CommandHandler)(Server&, Client&, const std::vector<std::string>&);
     Commands();
     ~Commands();
     void execute(Server& server, Client& client, std::string& cmd);
 
     void sendWelcome(Server &server, Client &client);
-    void handlePass(Server &server, Client &client, const std::string &param);
-    void handleNick(Server &server, Client &client, const std::vector<std::string> &param);
-    void handleUser(Server &server, Client &client, const std::vector<std::string> &param);
-    void handleQuit(Server &server, Client &client);
-    void handleJoin(Server &server, Client &client, const std::vector<std::string> &param);
+    void handlePass(Server &server, Client &client, const std::vector<std::string> &params);
+    void handleNick(Server &server, Client &client, const std::vector<std::string> &params);
+    void handleUser(Server &server, Client &client, const std::vector<std::string> &params);
+    void handleQuit(Server &server, Client &client, const std::vector<std::string> &params);
+    void handleJoin(Server &server, Client &client, const std::vector<std::string> &params);
+    private:
+    std::map<std::string, CommandHandler> cmdMap;
 };
 
 #endif

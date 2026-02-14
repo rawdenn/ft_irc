@@ -15,7 +15,17 @@
 
 */
 
-Commands::Commands() {};
+Commands::Commands()
+{
+    cmdMap["PASS"]    = &Commands::handlePass;
+    cmdMap["NICK"]    = &Commands::handleNick;
+    cmdMap["USER"]    = &Commands::handleUser;
+    cmdMap["QUIT"]    = &Commands::handleQuit;
+    cmdMap["JOIN"]    = &Commands::handleJoin;
+    //not implemented yet
+    // cmdMap["PART"]    = &Commands::handlePart;
+    // cmdMap["PRIVMSG"] = &Commands::handlePrivmsg;
+};
 
 Commands::~Commands() {}
 
@@ -57,16 +67,16 @@ void Commands::sendWelcome(Server &server, Client &client)
 }
 
 
-void Commands::handlePass(Server &server, Client &client, const std::string &param)
+void Commands::handlePass(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (client.hasSentPass)
-        return;
+    if (client.hasSentPass || params.size() > 2)
+        return; //plus some error message(probably best to split the 2 checks)
 
     // if wrong password, disconnect client
-    if (param != server.getPassword())
+    if (params[1] != server.getPassword())
     {
         sendNumeric(client, "464", server.getName(), "Password incorrect");
-        // server.removeClient(client.getFd());
+        // server.removeClient(client.getFd()); //client should be able to try again not be disconnected
         return;
     }
 
@@ -130,8 +140,9 @@ void Commands::handleUser(Server &server, Client &client, const std::vector<std:
     client.hasSentUser = true;
 }
 
-void Commands::handleQuit(Server &server, Client &client)
+void Commands::handleQuit(Server &server, Client &client, const std::vector<std::string> &params)
 {
+    (void)params;
     server.removeClient(client.getFd());
     //TO-DO: should we add a different error message? 
 }
@@ -169,25 +180,20 @@ void Commands::execute(Server &server, Client &client, std::string &cmd)
     {
         std::cout << "Token " << i << ": " << tokens[i] << std::endl;
     }
-    
+
     std::string command = tokens[0];
 
-    // TO-DO: replace this logic here later(after exec of all commands + adding them to a map)
-    if (command == "PASS")
-        handlePass(server, client, tokens[1]);
-    else if (command == "NICK")
-        handleNick(server, client, tokens);
-    else if (command == "USER")
-        handleUser(server, client, tokens);
-    else if (command == "QUIT")
-        handleQuit(server, client);
-    else if (command == "JOIN")
-        handleJoin(server, client, tokens);
-    else if (!client.isPassAccepted())
+    std::map<std::string, CommandHandler>::iterator it = cmdMap.find(command);
+    if (it != cmdMap.end())
     {
-        // later
+        CommandHandler handler = it->second;
+        (this->*handler)(server, client, tokens);
     }
-
+    else
+    {
+        //error message unknown command
+    }
+    
     if (client.isRegistered() && !client.isWelcomeSent())
     {
         sendWelcome(server, client);
