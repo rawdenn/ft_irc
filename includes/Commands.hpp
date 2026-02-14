@@ -15,6 +15,8 @@ public:
     void handlePass(Server &server, Client &client, const std::string &param);
     void handleNick(Server &server, Client &client, const std::vector<std::string> &param);
     void handleUser(Server &server, Client &client, const std::vector<std::string> &param);
+    void handleQuit(Server &server, Client &client);
+    void handleJoin(Server &server, Client &client, const std::vector<std::string> &param);
 };
 
 #endif

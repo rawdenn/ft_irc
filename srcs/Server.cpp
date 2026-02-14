@@ -212,10 +212,15 @@ void Server::executeCommand(Client &client, std::string command)
     commands.execute(*this, client, command);
 }
 
-// Channel *Server::findChannel(const std::string &name)
-// {
-//     std::map<std::string, Channel>::iterator it = channels.find(name);
-//     if (it == channels.end())
-//         return 0;
-//     return &it->second;
-// }
+std::map<std::string, Channel>& Server::getChannels()
+{
+    return (this->channels);
+}
+
+Channel *Server::findChannel(const std::string &name)
+{
+    std::map<std::string, Channel>::iterator it = channels.find(name);
+    if (it == channels.end())
+        return 0;
+    return &it->second;
+}

@@ -43,6 +43,7 @@ public:
     // void broadcastMessage(const std::string& message, int excludeFd = -1);
 
     // Channel management
+    std::map<std::string, Channel>& getChannels();
     Channel *findChannel(const std::string &name);
 };
 

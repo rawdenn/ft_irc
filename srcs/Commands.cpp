@@ -66,7 +66,7 @@ void Commands::handlePass(Server &server, Client &client, const std::string &par
     if (param != server.getPassword())
     {
         sendNumeric(client, "464", server.getName(), "Password incorrect");
-        server.removeClient(client.getFd());
+        // server.removeClient(client.getFd());
         return;
     }
 
@@ -130,6 +130,35 @@ void Commands::handleUser(Server &server, Client &client, const std::vector<std:
     client.hasSentUser = true;
 }
 
+void Commands::handleQuit(Server &server, Client &client)
+{
+    server.removeClient(client.getFd());
+    //TO-DO: should we add a different error message? 
+}
+
+void Commands::handleJoin(Server &server, Client &client, const std::vector<std::string> &params)
+{
+    if (params.size() < 2 || params[1].c_str()[0] != '#')
+        return ; //TO-DO: add error message
+
+    Channel *channel = server.findChannel(params[1]);
+    if (channel == 0)
+    {
+        Channel newChannel(params[1]);
+        newChannel.addMember(&client);
+        newChannel.addOperator(client.getFd());
+        server.getChannels().insert(make_pair(params[1], newChannel));
+    }
+    else 
+    {
+        channel->addMember(&client);
+        //TO-DO:add a proper message
+        channel->broadcast(client.getFd(), server.getName(), "test message");
+    }
+    
+}
+
+
 void Commands::execute(Server &server, Client &client, std::string &cmd)
 {
     std::vector<std::string> tokens = split(cmd, ' ');
@@ -150,6 +179,10 @@ void Commands::execute(Server &server, Client &client, std::string &cmd)
         handleNick(server, client, tokens);
     else if (command == "USER")
         handleUser(server, client, tokens);
+    else if (command == "QUIT")
+        handleQuit(server, client);
+    else if (command == "JOIN")
+        handleJoin(server, client, tokens);
     else if (!client.isPassAccepted())
     {
         // later
