@@ -22,9 +22,9 @@ Commands::Commands()
     cmdMap["USER"]    = &Commands::handleUser;
     cmdMap["QUIT"]    = &Commands::handleQuit;
     cmdMap["JOIN"]    = &Commands::handleJoin;
+    cmdMap["PRIVMSG"] = &Commands::handlePrivmsg;
     //not implemented yet
     // cmdMap["PART"]    = &Commands::handlePart;
-    // cmdMap["PRIVMSG"] = &Commands::handlePrivmsg;
 };
 
 Commands::~Commands() {}
@@ -56,7 +56,6 @@ void sendNumeric(Client &client, const std::string &numeric, const std::string &
     std::string fullMsg = ":" + server_name + " " + numeric + " " + client.getNickname() + " :" + message + "\r\n";
     send(client.getFd(), fullMsg.c_str(), fullMsg.size(), 0);
 }
-
 
 void Commands::sendWelcome(Server &server, Client &client)
 {
@@ -149,8 +148,17 @@ void Commands::handleQuit(Server &server, Client &client, const std::vector<std:
 
 void Commands::handleJoin(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (params.size() < 2 || params[1].c_str()[0] != '#')
+    if (params.size() < 2)
+    { 
+        //print error not enough params
         return ; //TO-DO: add error message
+    }
+
+    if (params[1].c_str()[0] != '#')
+    {
+        //print error bad channel name
+        return ;
+    }
 
     Channel *channel = server.findChannel(params[1]);
     if (channel == 0)
@@ -159,16 +167,74 @@ void Commands::handleJoin(Server &server, Client &client, const std::vector<std:
         newChannel.addMember(&client);
         newChannel.addOperator(client.getFd());
         server.getChannels().insert(make_pair(params[1], newChannel));
+        std::string message = ":" + client.getNickname() + "!" + server.getName()
+                                + " JOIN " + newChannel.getName() + "\n";
+        send(client.getFd(), message.c_str(), message.size(), 0);
     }
     else 
     {
         channel->addMember(&client);
-        //TO-DO:add a proper message
-        channel->broadcast(client.getFd(), server.getName(), "test message");
+        //<client nickname> Join <channel name>
+        std::string message = ":" + client.getNickname() + "!" + server.getName()
+                                + " JOIN " + channel->getName() + "\n";
+        send(client.getFd(), message.c_str(), message.size(), 0);
+        
+        // Response 2: :<Domain> <[RPL_TOPIC][1]> <NickName> <ChannelName> :<Topic>
+        message = ":" + server.getName() + "[THE RPL NUM] " + client.getNickname()
+                    + " " + channel->getName() + ":" + channel->getTopic() + "\n";
+        send(client.getFd(), message.c_str(), message.size(), 0);
+        // Response 3:
+        // :<Domain> <[RPL_NAMREPLY][1]> <NickName> = <ChannelName> : <NameList>
+        
+        //loop through list of clients and print them
+        message = ":" + server.getName() + "[THE RPL NUM] " + client.getNickname()
+                    + " " + channel->getName() + ":" + "list of names\n";
+        send(client.getFd(), message.c_str(), message.size(), 0);
+
+
+        // :<Domain> <[RPL_ENDOFNAMES][1]> <NickName> <ChannelName> :End of Names list
+        message = ":" + server.getName() + "[THE RPL NUM] " + client.getNickname()
+                    + " " + channel->getName() + ":" + "End of Names list\n";
+        send(client.getFd(), message.c_str(), message.size(), 0);
+
+        // std::string fullMsg = ":" + client.getNickname() + "!" + server.getName()
+        //     + " PRIVMSG" + " #" + channel->getName() + " :" + message + "\r\n";
+        // channel->broadcast(client.getFd(), fullMsg);
     }
     
 }
 
+void Commands::handlePrivmsg(Server &server, Client &client, const std::vector<std::string> &params)
+{
+    if (params.size() < 3 )
+    {
+        //print no such channel exists 
+        return ; //TO-DO: add error message
+    }
+    
+    if (params[1].c_str()[0] != '#')
+    {
+        //print bad channel name
+        return ;
+    }
+
+    Channel *channel = server.findChannel(params[1]);
+    if (channel == 0)
+    {
+        std::cerr<<"channel does not exist\n"<<std::endl; //check if err message on cerr or if send or if throw exception
+        return ;
+    }
+    std::string message ="";
+    for (size_t i = 2; i < params.size(); i++)
+    {
+        message += params[i];
+        if (i + 1 != params.size())
+            message += " ";
+    }
+    std::string fullMsg = ":" + client.getNickname() + "!" + server.getName()
+            + " PRIVMSG" + " " + channel->getName() + " :" + message + "\r\n";
+    channel->broadcast(client.getFd(), fullMsg);
+}
 
 void Commands::execute(Server &server, Client &client, std::string &cmd)
 {

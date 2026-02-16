@@ -22,6 +22,16 @@ const std::string &Channel::getName() const
     return this->name;
 }
 
+const std::string &Channel::getTopic() const
+{
+    return this->topic;
+}
+
+void Channel::setTopic(std::string newTopic)
+{
+    this->topic = newTopic;
+}
+
 bool Channel::hasMember(int fd)
 {
     return (this->members.find(fd) != this->members.end());
@@ -51,7 +61,7 @@ void Channel::removeOperator(int fd)
     operators.erase(fd);
 }
 
-void Channel::broadcast(int senderFd, const std::string &server_name, const std::string &message)
+void Channel::broadcast(int senderFd, const std::string &message)
 {
     std::map<int, Client *>::iterator it;
 
@@ -60,9 +70,7 @@ void Channel::broadcast(int senderFd, const std::string &server_name, const std:
         if (it->first == senderFd)
             continue;
         Client *client = it->second;
-        std::string fullMsg = ":" + client->getNickname() + "!" + server_name
-            + " PRIVMSG" + " #" + this->name + " :" + message + "\r\n";
-            send(client->getFd(), fullMsg.c_str(), fullMsg.size(), 0);
+        send(client->getFd(), message.c_str(), message.size(), 0);
     }
 }
 

@@ -99,10 +99,14 @@ void Server::run()
             if (pollFds[i].revents & POLLIN)
             {
                 if (pollFds[i].fd == serverFd)
+                {
                     acceptClient();
+                    // std::cout<<"in accept client message"<<std::endl;
+                }
                 else
                 {
                     // needs more handling later
+                    // std::cout<<"in handle client message"<<std::endl;
                     handleClientMessage(pollFds[i].fd);
                 }
             }

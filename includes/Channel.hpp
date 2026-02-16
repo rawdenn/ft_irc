@@ -31,6 +31,10 @@ public:
     ~Channel();
     
     const std::string &getName() const;
+    const std::string &getTopic() const;
+
+    void setTopic(std::string newTopic);
+
     bool hasMember(int fd);
     bool isOperator(int fd);
 
@@ -40,7 +44,7 @@ public:
     void addOperator(int fd);
     void removeOperator(int fd);
     
-    void broadcast(int senderFd, const std::string &server_name, const std::string &message);
+    void broadcast(int senderFd, const std::string &message);
 
     bool isEmpty() const;
 };

@@ -19,6 +19,7 @@ public:
     void handleUser(Server &server, Client &client, const std::vector<std::string> &params);
     void handleQuit(Server &server, Client &client, const std::vector<std::string> &params);
     void handleJoin(Server &server, Client &client, const std::vector<std::string> &params);
+    void handlePrivmsg(Server &server, Client &client, const std::vector<std::string> &params);
     private:
     std::map<std::string, CommandHandler> cmdMap;
 };
