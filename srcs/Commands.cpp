@@ -23,8 +23,9 @@ Commands::Commands()
     cmdMap["QUIT"]    = &Commands::handleQuit;
     cmdMap["JOIN"]    = &Commands::handleJoin;
     cmdMap["PRIVMSG"] = &Commands::handlePrivmsg;
-    //not implemented yet
+    cmdMap["TOPIC"] = &Commands::handleTopic;
     // cmdMap["PART"]    = &Commands::handlePart;
+    //not implemented yet
 };
 
 Commands::~Commands() {}
@@ -151,7 +152,7 @@ void Commands::handleJoin(Server &server, Client &client, const std::vector<std:
     if (params.size() < 2)
     { 
         //print error not enough params
-        return ; //TO-DO: add error message
+        return ;
     }
 
     if (params[1].c_str()[0] != '#')
@@ -174,32 +175,23 @@ void Commands::handleJoin(Server &server, Client &client, const std::vector<std:
     else 
     {
         channel->addMember(&client);
-        //<client nickname> Join <channel name>
+
         std::string message = ":" + client.getNickname() + "!" + server.getName()
                                 + " JOIN " + channel->getName() + "\n";
         send(client.getFd(), message.c_str(), message.size(), 0);
         
-        // Response 2: :<Domain> <[RPL_TOPIC][1]> <NickName> <ChannelName> :<Topic>
         message = ":" + server.getName() + "[THE RPL NUM] " + client.getNickname()
                     + " " + channel->getName() + ":" + channel->getTopic() + "\n";
         send(client.getFd(), message.c_str(), message.size(), 0);
-        // Response 3:
-        // :<Domain> <[RPL_NAMREPLY][1]> <NickName> = <ChannelName> : <NameList>
         
         //loop through list of clients and print them
         message = ":" + server.getName() + "[THE RPL NUM] " + client.getNickname()
                     + " " + channel->getName() + ":" + "list of names\n";
         send(client.getFd(), message.c_str(), message.size(), 0);
 
-
-        // :<Domain> <[RPL_ENDOFNAMES][1]> <NickName> <ChannelName> :End of Names list
         message = ":" + server.getName() + "[THE RPL NUM] " + client.getNickname()
                     + " " + channel->getName() + ":" + "End of Names list\n";
         send(client.getFd(), message.c_str(), message.size(), 0);
-
-        // std::string fullMsg = ":" + client.getNickname() + "!" + server.getName()
-        //     + " PRIVMSG" + " #" + channel->getName() + " :" + message + "\r\n";
-        // channel->broadcast(client.getFd(), fullMsg);
     }
     
 }
@@ -234,6 +226,57 @@ void Commands::handlePrivmsg(Server &server, Client &client, const std::vector<s
     std::string fullMsg = ":" + client.getNickname() + "!" + server.getName()
             + " PRIVMSG" + " " + channel->getName() + " :" + message + "\r\n";
     channel->broadcast(client.getFd(), fullMsg);
+}
+
+// void Commands::handlePart(Server &server, Client &client, const std::vector<std::string> &params)
+// {   
+//     //is this command required?   
+// }
+
+void Commands::handleTopic(Server &server, Client &client, const std::vector<std::string> &params)
+{
+    if (params.size() < 2 )
+    {
+        //print error 
+        return ; //TO-DO: add error message
+    }
+    
+    if (params[1].c_str()[0] != '#')
+    {
+        //print bad channel name
+        return ;
+    }
+    Channel *channel = server.findChannel(params[1]);
+    if (channel == 0)
+    {
+        std::cerr<<"channel does not exist\n"<<std::endl; //check if err message on cerr or if send or if throw exception
+        return ;
+    }
+    if (params.size() == 2)
+    {
+        if (channel->getTopic() == "")
+        {
+            std::string message = ":" + client.getNickname() + "!" + server.getName()
+                                    + " :" + channel->getTopic() + "\n";
+            send(client.getFd(), message.c_str(), message.size(), 0);
+        }
+        else
+        {
+            std::string message = ":" + client.getNickname() + "!" + server.getName()
+                                    + " :" + channel->getTopic() + "\n";
+            send(client.getFd(), message.c_str(), message.size(), 0);
+        }
+    }
+    else
+    {
+        //check if input starts with a :
+        //check if topic can be more than 1 word. if yes concatinate the sentence in 1 and set it
+        if (channel->isOperator(client.getFd()))
+            channel->setTopic(params[3]);
+        else
+            std::cout<<"youre not an op\n"; //change this message
+    }
+    
 }
 
 void Commands::execute(Server &server, Client &client, std::string &cmd)

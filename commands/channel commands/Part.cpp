@@ -1,4 +1,4 @@
-// ART #channel
+// PART #channel
 
 //     Remove user from channel
 

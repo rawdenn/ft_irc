@@ -31,8 +31,8 @@ public:
     ~Channel();
     
     const std::string &getName() const;
+    
     const std::string &getTopic() const;
-
     void setTopic(std::string newTopic);
 
     bool hasMember(int fd);
