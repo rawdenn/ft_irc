@@ -25,6 +25,7 @@ Commands::Commands()
     cmdMap["PRIVMSG"] = &Commands::handlePrivmsg;
     cmdMap["TOPIC"] = &Commands::handleTopic;
     cmdMap["PART"]    = &Commands::handlePart;
+    cmdMap["KICK"]    = &Commands::handlekick;
     //not implemented yet
 };
 
@@ -206,10 +207,10 @@ void Commands::handleJoin(Server &server, Client &client, const std::vector<std:
     
 }
 
-static std::string concatinate_params(const std::vector<std::string> &params)
+static std::string concatinate_params(const std::vector<std::string> &params, int start)
 {
     std::string message = "";
-    for (size_t i = 2; i < params.size(); i++)
+    for (size_t i = start; i < params.size(); i++)
     {
         message += params[i];
         if (i + 1 != params.size())
@@ -239,7 +240,7 @@ void Commands::handlePrivmsg(Server &server, Client &client, const std::vector<s
         return ;
     }
     std::string fullMsg = ":" + client.getNickname() + "!" + server.getName()
-            + " PRIVMSG" + " " + channel->getName() + " :" + concatinate_params(params) + "\r\n";
+            + " PRIVMSG" + " " + channel->getName() + " :" + concatinate_params(params, 2) + "\r\n";
     channel->broadcast(client.getFd(), fullMsg);
 }
 
@@ -307,6 +308,35 @@ void Commands::handleTopic(Server &server, Client &client, const std::vector<std
     }
     
 }
+
+// KICK #channel nickname :optional reason
+void Commands::handlekick(Server &server, Client &client, const std::vector<std::string> &params)
+{
+    Channel *channel = server.findChannel(params[1]);
+    if (channel == 0)
+    {
+        std::string message = ":" + client.getNickname() + "!" + server.getName()
+                                + " :" + params[1] + " channel does not exist\n";
+        send(client.getFd(), message.c_str(), message.size(), 0);
+    }
+    else
+    {
+        // check if param[2] is a member of server then check if memeber of channel
+        if (channel->isOperator(client.getFd()))
+        {
+            std::string kickMessage = "";
+            if (params.size() > 3)
+            {
+                kickMessage += concatinate_params(params, 3);
+            }
+            kickMessage += "\r\n";
+            std::string fullMsg = ":" + client.getNickname() +" kicked " + params[2] + " from " + channel->getName() + kickMessage;
+            channel->broadcast(client.getFd(), fullMsg);
+            // channel->removeMember(KickedClient.getFd());
+        }
+    }  
+}
+
 
 void Commands::execute(Server &server, Client &client, std::string &cmd)
 {

@@ -22,7 +22,7 @@ public:
     void handlePrivmsg(Server &server, Client &client, const std::vector<std::string> &params);
     void handleTopic(Server &server, Client &client, const std::vector<std::string> &params);
     void handlePart(Server &server, Client &client, const std::vector<std::string> &params);
-    void handlekI(Server &server, Client &client, const std::vector<std::string> &params);
+    void handlekick(Server &server, Client &client, const std::vector<std::string> &params);
     private:
     std::map<std::string, CommandHandler> cmdMap;
 };
