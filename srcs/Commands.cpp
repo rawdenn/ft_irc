@@ -24,7 +24,7 @@ Commands::Commands()
     cmdMap["JOIN"]    = &Commands::handleJoin;
     cmdMap["PRIVMSG"] = &Commands::handlePrivmsg;
     cmdMap["TOPIC"] = &Commands::handleTopic;
-    // cmdMap["PART"]    = &Commands::handlePart;
+    cmdMap["PART"]    = &Commands::handlePart;
     //not implemented yet
 };
 
@@ -143,8 +143,18 @@ void Commands::handleUser(Server &server, Client &client, const std::vector<std:
 void Commands::handleQuit(Server &server, Client &client, const std::vector<std::string> &params)
 {
     (void)params;
+    std::map<std::string, Channel>::iterator it;
+    for (it = server.getChannels().begin(); it != server.getChannels().end(); it++)
+    {
+        if (it->second.hasMember(client.getFd()))
+        {
+            if (it->second.isOperator(client.getFd()))
+                it->second.removeOperator(client.getFd());
+            it->second.broadcast(client.getFd(), client.getNickname() + " has quit the server\n"); // ADD WHAT CHANNEL THIS IS IN    
+            it->second.removeMember(client.getFd());
+        }
+    }
     server.removeClient(client.getFd());
-    //TO-DO: should we add a different error message? 
 }
 
 void Commands::handleJoin(Server &server, Client &client, const std::vector<std::string> &params)
@@ -196,6 +206,18 @@ void Commands::handleJoin(Server &server, Client &client, const std::vector<std:
     
 }
 
+static std::string concatinate_params(const std::vector<std::string> &params)
+{
+    std::string message = "";
+    for (size_t i = 2; i < params.size(); i++)
+    {
+        message += params[i];
+        if (i + 1 != params.size())
+            message += " ";
+    }
+    return (message);
+}
+
 void Commands::handlePrivmsg(Server &server, Client &client, const std::vector<std::string> &params)
 {
     if (params.size() < 3 )
@@ -216,22 +238,28 @@ void Commands::handlePrivmsg(Server &server, Client &client, const std::vector<s
         std::cerr<<"channel does not exist\n"<<std::endl; //check if err message on cerr or if send or if throw exception
         return ;
     }
-    std::string message ="";
-    for (size_t i = 2; i < params.size(); i++)
-    {
-        message += params[i];
-        if (i + 1 != params.size())
-            message += " ";
-    }
     std::string fullMsg = ":" + client.getNickname() + "!" + server.getName()
-            + " PRIVMSG" + " " + channel->getName() + " :" + message + "\r\n";
+            + " PRIVMSG" + " " + channel->getName() + " :" + concatinate_params(params) + "\r\n";
     channel->broadcast(client.getFd(), fullMsg);
 }
 
-// void Commands::handlePart(Server &server, Client &client, const std::vector<std::string> &params)
-// {   
-//     //is this command required?   
-// }
+void Commands::handlePart(Server &server, Client &client, const std::vector<std::string> &params)
+{   
+    Channel *channel = server.findChannel(params[1]);
+    if (channel == 0)
+    {
+        std::string message = ":" + client.getNickname() + "!" + server.getName()
+                                + " :" + params[1] + " channel does not exist\n";
+        send(client.getFd(), message.c_str(), message.size(), 0);
+    }
+    else 
+    {
+        channel->removeOperator(client.getFd());
+        std::string fullMsg = ":" + client.getNickname() +" left " + channel->getName() + "\r\n";
+        channel->broadcast(client.getFd(), fullMsg);
+        channel->removeMember(client.getFd());
+    }  
+}
 
 void Commands::handleTopic(Server &server, Client &client, const std::vector<std::string> &params)
 {
@@ -252,29 +280,30 @@ void Commands::handleTopic(Server &server, Client &client, const std::vector<std
         std::cerr<<"channel does not exist\n"<<std::endl; //check if err message on cerr or if send or if throw exception
         return ;
     }
+
+    if (!channel->hasMember(client.getFd()))
+    {
+        //print member not in this channel
+        return ;
+    }
+
     if (params.size() == 2)
     {
-        if (channel->getTopic() == "")
-        {
-            std::string message = ":" + client.getNickname() + "!" + server.getName()
-                                    + " :" + channel->getTopic() + "\n";
-            send(client.getFd(), message.c_str(), message.size(), 0);
-        }
-        else
-        {
-            std::string message = ":" + client.getNickname() + "!" + server.getName()
-                                    + " :" + channel->getTopic() + "\n";
-            send(client.getFd(), message.c_str(), message.size(), 0);
-        }
+        std::string message = ":" + client.getNickname() + "!" + server.getName()
+                                + " :" + channel->getTopic() + "\n";
+        send(client.getFd(), message.c_str(), message.size(), 0);
     }
     else
     {
         //check if input starts with a :
         //check if topic can be more than 1 word. if yes concatinate the sentence in 1 and set it
-        if (channel->isOperator(client.getFd()))
-            channel->setTopic(params[3]);
-        else
-            std::cout<<"youre not an op\n"; //change this message
+        if (channel->getIsTopicRestricted() && !channel->isOperator(client.getFd()))
+        {
+            std::string message = "cant change topic, you're not an operator\n"; // change this message to correct format
+            send(client.getFd(), message.c_str(), message.size(), 0);
+        }
+        if (params[2].size() > 0)
+            channel->setTopic(params[2]);
     }
     
 }

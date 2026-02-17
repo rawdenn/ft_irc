@@ -25,6 +25,8 @@ private:
     std::set<int> operators;
     std::string key;
     int userLimit;
+    bool isInviteOnly;
+    bool isTopicRestricted;
 public:
     Channel();
     Channel(std::string _name);
@@ -34,6 +36,18 @@ public:
     
     const std::string &getTopic() const;
     void setTopic(std::string newTopic);
+
+    const std::string &getKey() const;
+    void setKey(std::string newKey);
+
+    const int &getUserLimit() const;
+    void setUserLimit(int newUserLimit);
+
+    const bool &getIsInviteOnly() const;
+    void setIsInviteOnly(bool val);
+
+    const bool &getIsTopicRestricted() const;
+    void setIsTopicRestricted(bool val);
 
     bool hasMember(int fd);
     bool isOperator(int fd);

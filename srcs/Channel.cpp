@@ -5,14 +5,18 @@ Channel::Channel()
     this->name = "";
     this->topic = "";
     this->key = "";
-    this->userLimit = 0;
+    this->userLimit = -1;
+    this->isInviteOnly =false;
+    this->isTopicRestricted = true;
 }
 Channel::Channel(std::string _name)
 {
     this->name = _name;
     this->topic = "";
     this->key = "";
-    this->userLimit = 0;
+    this->userLimit = -1;
+    this->isInviteOnly =false;
+    this->isTopicRestricted = true;
 }
 Channel::~Channel()
 {}
@@ -32,6 +36,46 @@ void Channel::setTopic(std::string newTopic)
     this->topic = newTopic;
 }
 
+const std::string &Channel::getKey() const
+{
+    return (this->key);
+}
+
+void Channel::setKey(std::string newKey)
+{
+    this->key = newKey;
+}
+
+const int &Channel::getUserLimit() const
+{
+    return (this->userLimit);
+}
+
+void Channel::setUserLimit(int newUserLimit)
+{
+    this->userLimit = newUserLimit;
+}
+
+const bool &Channel::getIsInviteOnly() const
+{
+    return (this->isInviteOnly);
+}
+
+void Channel::setIsInviteOnly(bool val)
+{
+    this->isInviteOnly = val;
+}
+
+const bool &Channel::getIsTopicRestricted() const
+{
+    return (this->isTopicRestricted);
+}
+
+void Channel::setIsTopicRestricted(bool val)
+{
+    this->isTopicRestricted = val;
+}
+
 bool Channel::hasMember(int fd)
 {
     return (this->members.find(fd) != this->members.end());
@@ -48,8 +92,12 @@ void Channel::addMember(Client *client)
 }
 void Channel::removeMember(int fd)
 {
-    members.erase(fd);
     operators.erase(fd);
+    members.erase(fd);
+    if (members.empty())
+    {
+        //delete channel
+    }
 }
 
 void Channel::addOperator(int fd)
