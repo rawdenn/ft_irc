@@ -52,8 +52,6 @@ bool Server::isNicknameTaken(const std::string &nick)
     return false;
 }
 
-
-// this isnt final but just for testing connectivity on the port
 void Server::run()
 {
     // we bind and listen here...

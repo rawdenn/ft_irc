@@ -17,16 +17,16 @@
 
 Commands::Commands()
 {
-    cmdMap["PASS"]    = &Commands::handlePass;
-    cmdMap["NICK"]    = &Commands::handleNick;
-    cmdMap["USER"]    = &Commands::handleUser;
-    cmdMap["QUIT"]    = &Commands::handleQuit;
-    cmdMap["JOIN"]    = &Commands::handleJoin;
+    cmdMap["PASS"] = &Commands::handlePass;
+    cmdMap["NICK"] = &Commands::handleNick;
+    cmdMap["USER"] = &Commands::handleUser;
+    cmdMap["QUIT"] = &Commands::handleQuit;
+    cmdMap["JOIN"] = &Commands::handleJoin;
     cmdMap["PRIVMSG"] = &Commands::handlePrivmsg;
     cmdMap["TOPIC"] = &Commands::handleTopic;
-    cmdMap["PART"]    = &Commands::handlePart;
-    cmdMap["KICK"]    = &Commands::handlekick;
-    //not implemented yet
+    cmdMap["PART"] = &Commands::handlePart;
+    cmdMap["KICK"] = &Commands::handlekick;
+    // not implemented yet
 };
 
 Commands::~Commands() {}
@@ -67,21 +67,52 @@ void Commands::sendWelcome(Server &server, Client &client)
     sendNumeric(client, "004", server.getName(), "... server info ...");
 }
 
-
 void Commands::handlePass(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (client.hasSentPass || params.size() > 2)
-        return; //plus some error message(probably best to split the 2 checks)
+    if (client.hasSentPass)
+    {
+        sendNumeric(client, "462", server.getName(), "You may not reregister");
+        return;
+    }
 
-    // if wrong password, disconnect client
+    if (params.size() < 2)
+    {
+        sendNumeric(client, "461", server.getName(), "PASS :Not enough parameters");
+        return;
+    }
+
+    // if there's more it should only check for 1st param
     if (params[1] != server.getPassword())
     {
         sendNumeric(client, "464", server.getName(), "Password incorrect");
-        // server.removeClient(client.getFd()); //client should be able to try again not be disconnected
         return;
     }
 
     client.hasSentPass = true;
+    if (client.isRegistered() && !client.isWelcomeSent())
+    {
+        sendWelcome(server, client);
+        client.setWelcomeSent(true);
+    }
+}
+
+// These should not pass
+// NICK 123rawan
+// NICK @rawan
+// NICK rawan!
+// NICK rawan rawan
+bool isValidNick(const std::string &nick)
+{
+    if (nick.empty())
+        return false;
+    if (!isalpha(nick[0]))
+        return false;
+    for (size_t i = 0; i < nick.size(); i++)
+    {
+        if (!isalnum(nick[i]) && nick[i] != '_' && nick[i] != '-')
+            return false;
+    }
+    return true;
 }
 
 void Commands::handleNick(Server &server, Client &client, const std::vector<std::string> &params)
@@ -93,9 +124,16 @@ void Commands::handleNick(Server &server, Client &client, const std::vector<std:
     }
 
     std::string nickname = params[1];
+
+    if (!isValidNick(nickname))
+    {
+        sendNumeric(client, "432", server.getName(), nickname + " :Erroneous nickname");
+        return;
+    }
+
     if (server.isNicknameTaken(nickname))
     {
-        sendNumeric(client, "433", server.getName(), nickname + " Nickname is already in use");
+        sendNumeric(client, "433", server.getName(), nickname + " :Nickname is already in use");
         return;
     }
 
@@ -109,7 +147,7 @@ void Commands::handleNick(Server &server, Client &client, const std::vector<std:
     }
 }
 
-void Commands::handleUser(Server &server, Client &client, const std::vector<std::string>& params)
+void Commands::handleUser(Server &server, Client &client, const std::vector<std::string> &params)
 {
     if (client.hasSentUser)
     {
@@ -117,28 +155,38 @@ void Commands::handleUser(Server &server, Client &client, const std::vector<std:
         return;
     }
 
-    if (params.size() < 4)
+    if (params.size() < 5)
     {
         sendNumeric(client, "461", server.getName(), "USER :Not enough parameters");
         return;
     }
 
-    client.setUsername(params[1]);
-    std::string realname;
-    for (size_t i = 0; i < params.size(); ++i)
+    if (params[4][0] != ':')
     {
-        if (params[i][0] == ':')
-        {
-            realname = params[i].substr(1); // remove ':'
-            for (size_t j = i + 1; j < params.size(); ++j)
-                realname += " " + params[j];
-            break;
-        }
+        sendNumeric(client, "461", server.getName(), "USER :Not enough parameters");
+        return;
     }
 
-    // std::cout << "Realname extracted: " << realname << std::endl;
+    std::string realname;
+    realname = params[4].substr(1);
+    for (size_t i = 5; i < params.size(); ++i)
+        realname += " " + params[i];
+
+    if (realname.empty())
+    {
+        sendNumeric(client, "461", server.getName(), "USER :Not enough parameters2");
+        return;
+    }
+
+    client.setUsername(params[1]);
     client.setRealname(realname);
     client.hasSentUser = true;
+
+    if (client.isRegistered() && !client.isWelcomeSent())
+    {
+        sendWelcome(server, client);
+        client.setWelcomeSent(true);
+    }
 }
 
 void Commands::handleQuit(Server &server, Client &client, const std::vector<std::string> &params)
@@ -151,7 +199,7 @@ void Commands::handleQuit(Server &server, Client &client, const std::vector<std:
         {
             if (it->second.isOperator(client.getFd()))
                 it->second.removeOperator(client.getFd());
-            it->second.broadcast(client.getFd(), client.getNickname() + " has quit the server\n"); // ADD WHAT CHANNEL THIS IS IN    
+            it->second.broadcast(client.getFd(), client.getNickname() + " has quit the server\n"); // ADD WHAT CHANNEL THIS IS IN
             it->second.removeMember(client.getFd());
         }
     }
@@ -161,15 +209,15 @@ void Commands::handleQuit(Server &server, Client &client, const std::vector<std:
 void Commands::handleJoin(Server &server, Client &client, const std::vector<std::string> &params)
 {
     if (params.size() < 2)
-    { 
-        //print error not enough params
-        return ;
+    {
+        sendNumeric(client, "461", server.getName(), "JOIN :Not enough parameters");
+        return;
     }
 
     if (params[1].c_str()[0] != '#')
     {
-        //print error bad channel name
-        return ;
+        sendNumeric(client, "479", server.getName(), params[1] + " :Bad channel name");
+        return;
     }
 
     Channel *channel = server.findChannel(params[1]);
@@ -179,32 +227,26 @@ void Commands::handleJoin(Server &server, Client &client, const std::vector<std:
         newChannel.addMember(&client);
         newChannel.addOperator(client.getFd());
         server.getChannels().insert(make_pair(params[1], newChannel));
-        std::string message = ":" + client.getNickname() + "!" + server.getName()
-                                + " JOIN " + newChannel.getName() + "\n";
+        std::string message = ":" + client.getNickname() + "!" + server.getName() + " JOIN " + newChannel.getName() + "\n";
         send(client.getFd(), message.c_str(), message.size(), 0);
     }
-    else 
+    else
     {
         channel->addMember(&client);
 
-        std::string message = ":" + client.getNickname() + "!" + server.getName()
-                                + " JOIN " + channel->getName() + "\n";
-        send(client.getFd(), message.c_str(), message.size(), 0);
-        
-        message = ":" + server.getName() + "[THE RPL NUM] " + client.getNickname()
-                    + " " + channel->getName() + ":" + channel->getTopic() + "\n";
-        send(client.getFd(), message.c_str(), message.size(), 0);
-        
-        //loop through list of clients and print them
-        message = ":" + server.getName() + "[THE RPL NUM] " + client.getNickname()
-                    + " " + channel->getName() + ":" + "list of names\n";
+        std::string message = ":" + client.getNickname() + "!" + server.getName() + " JOIN " + channel->getName() + "\n";
         send(client.getFd(), message.c_str(), message.size(), 0);
 
-        message = ":" + server.getName() + "[THE RPL NUM] " + client.getNickname()
-                    + " " + channel->getName() + ":" + "End of Names list\n";
+        message = ":" + server.getName() + "[THE RPL NUM] " + client.getNickname() + " " + channel->getName() + ":" + channel->getTopic() + "\n";
+        send(client.getFd(), message.c_str(), message.size(), 0);
+
+        // loop through list of clients and print them
+        message = ":" + server.getName() + "[THE RPL NUM] " + client.getNickname() + " " + channel->getName() + ":" + "list of names\n";
+        send(client.getFd(), message.c_str(), message.size(), 0);
+
+        message = ":" + server.getName() + "[THE RPL NUM] " + client.getNickname() + " " + channel->getName() + ":" + "End of Names list\n";
         send(client.getFd(), message.c_str(), message.size(), 0);
     }
-    
 }
 
 static std::string concatinate_params(const std::vector<std::string> &params, int start)
@@ -221,92 +263,87 @@ static std::string concatinate_params(const std::vector<std::string> &params, in
 
 void Commands::handlePrivmsg(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (params.size() < 3 )
+    if (params.size() < 3)
     {
-        //print no such channel exists 
-        return ; //TO-DO: add error message
+        sendNumeric(client, "461", server.getName(), "PRIVMSG :Not enough parameters");
+        return;
     }
-    
+
     if (params[1].c_str()[0] != '#')
     {
-        //print bad channel name
-        return ;
+        sendNumeric(client, "479", server.getName(), params[1] + " :Bad channel name");
+        return;
     }
 
     Channel *channel = server.findChannel(params[1]);
     if (channel == 0)
     {
-        std::cerr<<"channel does not exist\n"<<std::endl; //check if err message on cerr or if send or if throw exception
-        return ;
+        sendNumeric(client, "403", server.getName(), params[1] + " :No such channel");
+        return;
     }
-    std::string fullMsg = ":" + client.getNickname() + "!" + server.getName()
-            + " PRIVMSG" + " " + channel->getName() + " :" + concatinate_params(params, 2) + "\r\n";
+    std::string fullMsg = ":" + client.getNickname() + "!" + server.getName() + " PRIVMSG" + " " + channel->getName() + " :" + concatinate_params(params, 2) + "\r\n";
     channel->broadcast(client.getFd(), fullMsg);
 }
 
 void Commands::handlePart(Server &server, Client &client, const std::vector<std::string> &params)
-{   
-    Channel *channel = server.findChannel(params[1]);
-    if (channel == 0)
-    {
-        std::string message = ":" + client.getNickname() + "!" + server.getName()
-                                + " :" + params[1] + " channel does not exist\n";
-        send(client.getFd(), message.c_str(), message.size(), 0);
-    }
-    else 
-    {
-        channel->removeOperator(client.getFd());
-        std::string fullMsg = ":" + client.getNickname() +" left " + channel->getName() + "\r\n";
-        channel->broadcast(client.getFd(), fullMsg);
-        channel->removeMember(client.getFd());
-    }  
-}
-
-void Commands::handleTopic(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (params.size() < 2 )
-    {
-        //print error 
-        return ; //TO-DO: add error message
-    }
-    
-    if (params[1].c_str()[0] != '#')
-    {
-        //print bad channel name
-        return ;
-    }
     Channel *channel = server.findChannel(params[1]);
     if (channel == 0)
     {
-        std::cerr<<"channel does not exist\n"<<std::endl; //check if err message on cerr or if send or if throw exception
-        return ;
-    }
-
-    if (!channel->hasMember(client.getFd()))
-    {
-        //print member not in this channel
-        return ;
-    }
-
-    if (params.size() == 2)
-    {
-        std::string message = ":" + client.getNickname() + "!" + server.getName()
-                                + " :" + channel->getTopic() + "\n";
+        std::string message = ":" + client.getNickname() + "!" + server.getName() + " :" + params[1] + " channel does not exist\n";
         send(client.getFd(), message.c_str(), message.size(), 0);
     }
     else
     {
-        //check if input starts with a :
-        //check if topic can be more than 1 word. if yes concatinate the sentence in 1 and set it
+        channel->removeOperator(client.getFd());
+        std::string fullMsg = ":" + client.getNickname() + " left " + channel->getName() + "\r\n";
+        channel->broadcast(client.getFd(), fullMsg);
+        channel->removeMember(client.getFd());
+    }
+}
+
+void Commands::handleTopic(Server &server, Client &client, const std::vector<std::string> &params)
+{
+    if (params.size() < 2)
+    {
+        sendNumeric(client, "461", server.getName(), "TOPIC :Not enough parameters");
+        return;
+    }
+
+    if (params[1].c_str()[0] != '#')
+    {
+        sendNumeric(client, "479", server.getName(), params[1] + " :Bad channel name");
+        return;
+    }
+    Channel *channel = server.findChannel(params[1]);
+    if (channel == 0)
+    {
+        sendNumeric(client, "403", server.getName(), params[1] + " :No such channel");
+        return;
+    }
+
+    if (!channel->hasMember(client.getFd()))
+    {
+        sendNumeric(client, "442", server.getName(), params[1] + " :You're not on that channel");
+        return;
+    }
+
+    if (params.size() == 2)
+    {
+        std::string message = ":" + client.getNickname() + "!" + server.getName() + " :" + channel->getTopic() + "\n";
+        send(client.getFd(), message.c_str(), message.size(), 0);
+    }
+    else
+    {
+        // check if input starts with a :
+        // check if topic can be more than 1 word. if yes concatinate the sentence in 1 and set it
         if (channel->getIsTopicRestricted() && !channel->isOperator(client.getFd()))
         {
-            std::string message = "cant change topic, you're not an operator\n"; // change this message to correct format
-            send(client.getFd(), message.c_str(), message.size(), 0);
+            sendNumeric(client, "482", server.getName(), channel->getName() + " :You're not an operator");
         }
         if (params[2].size() > 0)
             channel->setTopic(params[2]);
     }
-    
 }
 
 // KICK #channel nickname :optional reason
@@ -315,28 +352,23 @@ void Commands::handlekick(Server &server, Client &client, const std::vector<std:
     Channel *channel = server.findChannel(params[1]);
     if (channel == 0)
     {
-        std::string message = ":" + client.getNickname() + "!" + server.getName()
-                                + " :" + params[1] + " channel does not exist\n";
-        send(client.getFd(), message.c_str(), message.size(), 0);
+        sendNumeric(client, "403", server.getName(), params[1] + " :No such channel");
+        return;
     }
-    else
+    // check if param[2] is a member of server then check if memeber of channel
+    if (channel->isOperator(client.getFd()))
     {
-        // check if param[2] is a member of server then check if memeber of channel
-        if (channel->isOperator(client.getFd()))
+        std::string kickMessage = "";
+        if (params.size() > 3)
         {
-            std::string kickMessage = "";
-            if (params.size() > 3)
-            {
-                kickMessage += concatinate_params(params, 3);
-            }
-            kickMessage += "\r\n";
-            std::string fullMsg = ":" + client.getNickname() +" kicked " + params[2] + " from " + channel->getName() + kickMessage;
-            channel->broadcast(client.getFd(), fullMsg);
-            // channel->removeMember(KickedClient.getFd());
+            kickMessage += concatinate_params(params, 3);
         }
-    }  
+        kickMessage += "\r\n";
+        std::string fullMsg = ":" + client.getNickname() + " kicked " + params[2] + " from " + channel->getName() + kickMessage;
+        channel->broadcast(client.getFd(), fullMsg);
+        // channel->removeMember(KickedClient.getFd());
+    }
 }
-
 
 void Commands::execute(Server &server, Client &client, std::string &cmd)
 {
@@ -359,14 +391,6 @@ void Commands::execute(Server &server, Client &client, std::string &cmd)
     }
     else
     {
-        //error message unknown command
+        // error message unknown command
     }
-    
-    if (client.isRegistered() && !client.isWelcomeSent())
-    {
-        sendWelcome(server, client);
-        std::cout << "Client " << client.getNickname() << " is now registered." << std::endl;
-        client.setWelcomeSent(true);
-    }
-
 }
