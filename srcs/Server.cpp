@@ -139,7 +139,7 @@ void Server::acceptClient()
     if (client_fd < 0)
     {
         // in non-blocking mode, accept can return EWOULDBLOCK or EAGAIN if there are no pending connections
-        // if (errno != EWOULDBLOCK && errno != EAGAIN)
+        if (errno != EWOULDBLOCK && errno != EAGAIN)
             perror("accept");
         return;
     }
@@ -225,4 +225,24 @@ Channel *Server::findChannel(const std::string &name)
     if (it == channels.end())
         return 0;
     return &it->second;
+}
+
+Channel* Server::createChannel(const std::string& name, Client& creator)
+{
+    Channel newChannel(name);
+
+    // Add creator as member
+    newChannel.addMember(&creator);
+
+    // Make creator operator
+    newChannel.addOperator(creator.getFd());
+
+    // Insert into map
+    std::pair<std::map<std::string, Channel>::iterator, bool> result;
+    result = channels.insert(std::make_pair(name, newChannel));
+
+    if (!result.second)
+        return NULL; // insertion failed (shouldn't happen if checked before)
+
+    return &(result.first->second);
 }

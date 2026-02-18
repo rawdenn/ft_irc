@@ -81,8 +81,8 @@ bool Channel::hasMember(int fd)
     return (this->members.find(fd) != this->members.end());
 }
 
-bool Channel::isOperator(int fd)
-{
+bool Channel::isOperator(int fd) const
+{   
     return (this->operators.find(fd) != this->operators.end());
 }
 
@@ -120,6 +120,22 @@ void Channel::broadcast(int senderFd, const std::string &message)
         Client *client = it->second;
         send(client->getFd(), message.c_str(), message.size(), 0);
     }
+}
+
+std::string Channel::getNamesList() const
+{
+    std::string namesList = "";
+    std::map<int, Client *>::const_iterator it;
+
+    for (it = this->members.begin(); it != this->members.end(); it++)
+    {
+        Client *client = it->second;
+        if (isOperator(client->getFd()))
+            namesList += "@" + client->getNickname() + " ";
+        else
+            namesList += client->getNickname() + " ";
+    }
+    return namesList;
 }
 
 bool Channel::isEmpty() const

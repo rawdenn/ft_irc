@@ -28,7 +28,7 @@ public:
     bool hasSentNick;
     bool hasSentUser;
     Client(int fd);
-    Client(int fd, const std::string &nick, const std::string &user, const std::string &real);
+    // Client(int fd, const std::string &nick, const std::string &user, const std::string &real);
     ~Client();
 
     int getFd() const;

@@ -206,47 +206,60 @@ void Commands::handleQuit(Server &server, Client &client, const std::vector<std:
     server.removeClient(client.getFd());
 }
 
+// fixed some things but not sure if it covers all cases
 void Commands::handleJoin(Server &server, Client &client, const std::vector<std::string> &params)
 {
+    if (!client.isRegistered())
+    {
+        sendNumeric(client, "451", server.getName(), ":You have not registered");
+        return;
+    }
+
     if (params.size() < 2)
     {
         sendNumeric(client, "461", server.getName(), "JOIN :Not enough parameters");
         return;
     }
 
-    if (params[1].c_str()[0] != '#')
+    std::string chanName = params[1];
+    if (chanName.empty() || chanName[0] != '#')
     {
-        sendNumeric(client, "479", server.getName(), params[1] + " :Bad channel name");
+        sendNumeric(client, "476", server.getName(), client.getNickname() + " " + chanName + " :Bad Channel Mask");
         return;
     }
 
-    Channel *channel = server.findChannel(params[1]);
-    if (channel == 0)
+    Channel *channel = server.findChannel(chanName);
+
+    if (!channel)
+        channel = server.createChannel(chanName, client);
+    else
     {
-        Channel newChannel(params[1]);
-        newChannel.addMember(&client);
-        newChannel.addOperator(client.getFd());
-        server.getChannels().insert(make_pair(params[1], newChannel));
-        std::string message = ":" + client.getNickname() + "!" + server.getName() + " JOIN " + newChannel.getName() + "\n";
-        send(client.getFd(), message.c_str(), message.size(), 0);
+        if (channel->hasMember(client.getFd()))
+        {
+            sendNumeric(client, "443", server.getName(), client.getNickname() + " " + chanName + " :is already on channel");
+            return;
+        }
+
+        channel->addMember(&client);
+    }
+
+    // not sure if it should always be @localhost
+    std::string joinMsg = ":" + client.getNickname() + "!" + client.getUsername() + "@localhost JOIN " + chanName + "\r\n";
+
+    channel->broadcast(client.getFd(), joinMsg);
+
+    if (!channel->getTopic().empty())
+    {
+        sendNumeric(client, "332", server.getName(), client.getNickname() + " " + chanName + " :" + channel->getTopic());
     }
     else
     {
-        channel->addMember(&client);
-
-        std::string message = ":" + client.getNickname() + "!" + server.getName() + " JOIN " + channel->getName() + "\n";
-        send(client.getFd(), message.c_str(), message.size(), 0);
-
-        message = ":" + server.getName() + "[THE RPL NUM] " + client.getNickname() + " " + channel->getName() + ":" + channel->getTopic() + "\n";
-        send(client.getFd(), message.c_str(), message.size(), 0);
-
-        // loop through list of clients and print them
-        message = ":" + server.getName() + "[THE RPL NUM] " + client.getNickname() + " " + channel->getName() + ":" + "list of names\n";
-        send(client.getFd(), message.c_str(), message.size(), 0);
-
-        message = ":" + server.getName() + "[THE RPL NUM] " + client.getNickname() + " " + channel->getName() + ":" + "End of Names list\n";
-        send(client.getFd(), message.c_str(), message.size(), 0);
+        sendNumeric(client, "331", server.getName(), client.getNickname() + " " + chanName + " :No topic is set");
     }
+
+    std::string names = channel->getNamesList();
+    sendNumeric(client, "353", server.getName(), client.getNickname() + " = " + chanName + " :" + names);
+    sendNumeric(client, "366", server.getName(), client.getNickname() + " " + chanName + " :End of /NAMES list");
 }
 
 static std::string concatinate_params(const std::vector<std::string> &params, int start)
@@ -271,6 +284,7 @@ void Commands::handlePrivmsg(Server &server, Client &client, const std::vector<s
 
     if (params[1].c_str()[0] != '#')
     {
+        // this is wrong, need to check again
         sendNumeric(client, "479", server.getName(), params[1] + " :Bad channel name");
         return;
     }
@@ -312,6 +326,7 @@ void Commands::handleTopic(Server &server, Client &client, const std::vector<std
 
     if (params[1].c_str()[0] != '#')
     {
+        // this is wrong, need to check again
         sendNumeric(client, "479", server.getName(), params[1] + " :Bad channel name");
         return;
     }

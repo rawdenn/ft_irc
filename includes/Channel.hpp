@@ -50,7 +50,7 @@ public:
     void setIsTopicRestricted(bool val);
 
     bool hasMember(int fd);
-    bool isOperator(int fd);
+    bool isOperator(int fd) const;
 
     void addMember(Client *client);
     void removeMember(int fd);
@@ -59,6 +59,7 @@ public:
     void removeOperator(int fd);
     
     void broadcast(int senderFd, const std::string &message);
+    std::string getNamesList() const;
 
     bool isEmpty() const;
 };
