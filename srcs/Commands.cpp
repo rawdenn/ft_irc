@@ -25,7 +25,8 @@ Commands::Commands()
     cmdMap["PRIVMSG"] = &Commands::handlePrivmsg;
     cmdMap["TOPIC"] = &Commands::handleTopic;
     cmdMap["PART"] = &Commands::handlePart;
-    cmdMap["KICK"] = &Commands::handlekick;
+    cmdMap["KICK"] = &Commands::handleKick;
+    cmdMap["INVITE"] = &Commands::handleInvite;
     // not implemented yet
 };
 
@@ -163,7 +164,7 @@ void Commands::handleUser(Server &server, Client &client, const std::vector<std:
 
     if (params[4][0] != ':')
     {
-        sendNumeric(client, "461", server.getName(), "USER :Not enough parameters");
+        sendNumeric(client, "461", server.getName(), "USER :Wrong input format");
         return;
     }
 
@@ -362,12 +363,24 @@ void Commands::handleTopic(Server &server, Client &client, const std::vector<std
 }
 
 // KICK #channel nickname :optional reason
-void Commands::handlekick(Server &server, Client &client, const std::vector<std::string> &params)
+void Commands::handleKick(Server &server, Client &client, const std::vector<std::string> &params)
 {
+    if (params.size() < 3)
+    {
+        //insert numerik
+        sendNumeric(client, "numeric", server.getName(), params[1] + " :KICK:Not enough parameters");
+        return ;
+    }
     Channel *channel = server.findChannel(params[1]);
     if (channel == 0)
     {
         sendNumeric(client, "403", server.getName(), params[1] + " :No such channel");
+        return;
+    }
+    Client *possibleMember = channel->getMemberFromNickname(params[2]);
+    if (possibleMember == NULL)
+    {
+        sendNumeric(client, "403", server.getName(), params[1] + " :is not a member");
         return;
     }
     // check if param[2] is a member of server then check if memeber of channel
@@ -381,8 +394,44 @@ void Commands::handlekick(Server &server, Client &client, const std::vector<std:
         kickMessage += "\r\n";
         std::string fullMsg = ":" + client.getNickname() + " kicked " + params[2] + " from " + channel->getName() + kickMessage;
         channel->broadcast(client.getFd(), fullMsg);
-        // channel->removeMember(KickedClient.getFd());
+        channel->removeMember(possibleMember->getFd());
     }
+    else
+    {
+        sendNumeric(client, "numeric", server.getName(), params[1] + " :is not an operator");
+        return;
+    }
+}
+
+void Commands::handleInvite(Server &server, Client &client, const std::vector<std::string> &params)
+{
+    if (params.size() < 3)
+    {
+        //insert numeric
+        sendNumeric(client, "numeric", server.getName(), params[1] + " :KICK:Not enough parameters");
+        return ;
+    }
+    Channel *channel = server.findChannel(params[2]);
+    if (channel == 0)
+    {
+        sendNumeric(client, "403", server.getName(), params[1] + " :No such channel");
+        return;
+    }
+    Client *possibleMember = server.getClientFromNickname(params[1]);
+    if (possibleMember == NULL)
+    {
+        sendNumeric(client, "403", server.getName(), params[1] + " :is not a member");
+        return;
+    }
+    
+    if (channel->getIsInviteOnly() && !channel->isOperator(client.getFd()))
+    {
+        //add numeric
+        sendNumeric(client, "numeric", server.getName(), params[1] + " :channel is invite only and you are not an operator");
+        return ;
+    }
+    //should we broadcast a message here?
+    channel->addMember(possibleMember);
 }
 
 void Commands::execute(Server &server, Client &client, std::string &cmd)

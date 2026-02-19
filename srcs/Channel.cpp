@@ -81,6 +81,17 @@ bool Channel::hasMember(int fd)
     return (this->members.find(fd) != this->members.end());
 }
 
+Client *Channel::getMemberFromNickname(std::string nickname)
+{
+    std::map<int, Client *>::iterator it;
+
+    for (it = members.begin(); it != members.end(); ++it)
+        if (it->second->getNickname() == nickname)
+            return (it->second);
+    return (NULL);
+}
+
+
 bool Channel::isOperator(int fd) const
 {   
     return (this->operators.find(fd) != this->operators.end());

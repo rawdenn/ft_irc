@@ -31,9 +31,10 @@ public:
     Channel();
     Channel(std::string _name);
     ~Channel();
-    
+
     const std::string &getName() const;
-    
+    Client *getMemberFromNickname(std::string nickname);
+
     const std::string &getTopic() const;
     void setTopic(std::string newTopic);
 

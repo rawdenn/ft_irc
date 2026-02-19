@@ -45,6 +45,7 @@ public:
     // Channel management
     std::map<std::string, Channel> &getChannels();
     Channel *findChannel(const std::string &name);
+    Client *getClientFromNickname(std::string nickname);
     Channel *createChannel(const std::string &name, Client &creator);
 };
 

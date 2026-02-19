@@ -227,6 +227,16 @@ Channel *Server::findChannel(const std::string &name)
     return &it->second;
 }
 
+Client *Server::getClientFromNickname(std::string nickname)
+{
+    std::map<int, Client>::iterator it;
+
+    for (it = clients.begin(); it != clients.end(); ++it)
+        if (it->second.getNickname() == nickname)
+            return (&it->second);
+    return (NULL);
+}
+
 Channel* Server::createChannel(const std::string& name, Client& creator)
 {
     Channel newChannel(name);
