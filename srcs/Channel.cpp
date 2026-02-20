@@ -19,7 +19,12 @@ Channel::Channel(std::string _name)
     this->isTopicRestricted = true;
 }
 Channel::~Channel()
-{}
+{
+    for (auto it = members.begin(); it != members.end(); ++it)
+    {
+        delete it->second;
+    }
+}
 
 const std::string &Channel::getName() const
 {

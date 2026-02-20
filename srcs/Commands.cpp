@@ -126,7 +126,6 @@ void Commands::handleJoin(Server &server, Client &client, const std::vector<std:
         channel->addMember(&client);
     }
 
-    // not sure if it should always be @localhost
     std::string joinMsg = ":" + client.getNickname() + "!" + client.getUsername() + "@localhost JOIN " + chanName + "\r\n";
 
     channel->broadcast(client.getFd(), joinMsg);
@@ -161,25 +160,37 @@ void Commands::handlePrivmsg(Server &server, Client &client, const std::vector<s
         return;
     }
 
-    if (params[1].c_str()[0] != '#')
+    if (params[1].c_str()[0] == '#')
     {
-        // this is wrong, need to check again
-        sendNumeric(client, "479", server.getName(), params[1] + " :Bad channel name");
-        return;
+        Channel *channel = server.findChannel(params[1]);
+        if (channel == 0)
+        {
+            sendNumeric(client, "403", server.getName(), params[1] + " :No such channel");
+            return;
+        }
+        std::string fullMsg = ":" + client.getNickname() + "!" + server.getName() + " PRIVMSG" + " " + channel->getName() + " :" + concatinate_params(params, 2) + "\r\n";
+        channel->broadcast(client.getFd(), fullMsg);
     }
-
-    Channel *channel = server.findChannel(params[1]);
-    if (channel == 0)
+    else
     {
-        sendNumeric(client, "403", server.getName(), params[1] + " :No such channel");
-        return;
+        Client *recipient = server.getClientFromNickname(params[1]);
+        if (recipient == NULL)
+        {
+            sendNumeric(client, "401", server.getName(), params[1] + " :No such nick");
+            return;
+        }
+        std::string fullMsg = ":" + client.getNickname() + "!" + server.getName() + " PRIVMSG" + " " + recipient->getNickname() + " :" + concatinate_params(params, 2) + "\r\n";
+        send(recipient->getFd(), fullMsg.c_str(), fullMsg.size(), 0);
     }
-    std::string fullMsg = ":" + client.getNickname() + "!" + server.getName() + " PRIVMSG" + " " + channel->getName() + " :" + concatinate_params(params, 2) + "\r\n";
-    channel->broadcast(client.getFd(), fullMsg);
 }
 
 void Commands::handlePart(Server &server, Client &client, const std::vector<std::string> &params)
 {
+    if (params.size() < 2)
+    {
+        sendNumeric(client, "461", server.getName(), "PART :Not enough parameters");
+        return;
+    }
     Channel *channel = server.findChannel(params[1]);
     if (channel == 0)
     {
@@ -197,7 +208,7 @@ void Commands::handlePart(Server &server, Client &client, const std::vector<std:
 
 void Commands::handleTopic(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (params.size() < 2)
+    if (params.size() < 3)
     {
         sendNumeric(client, "461", server.getName(), "TOPIC :Not enough parameters");
         return;
@@ -205,8 +216,7 @@ void Commands::handleTopic(Server &server, Client &client, const std::vector<std
 
     if (params[1].c_str()[0] != '#')
     {
-        // this is wrong, need to check again
-        sendNumeric(client, "479", server.getName(), params[1] + " :Bad channel name");
+        sendNumeric(client, "476", server.getName(), params[1] + " :Bad Channel Mask");
         return;
     }
     Channel *channel = server.findChannel(params[1]);
@@ -222,22 +232,14 @@ void Commands::handleTopic(Server &server, Client &client, const std::vector<std
         return;
     }
 
-    if (params.size() == 2)
+    // check if input starts with a :
+    // check if topic can be more than 1 word. if yes concatinate the sentence in 1 and set it
+    if (channel->getIsTopicRestricted() && !channel->isOperator(client.getFd()))
     {
-        std::string message = ":" + client.getNickname() + "!" + server.getName() + " :" + channel->getTopic() + "\n";
-        send(client.getFd(), message.c_str(), message.size(), 0);
+        sendNumeric(client, "482", server.getName(), channel->getName() + " :You're not an operator");
     }
-    else
-    {
-        // check if input starts with a :
-        // check if topic can be more than 1 word. if yes concatinate the sentence in 1 and set it
-        if (channel->getIsTopicRestricted() && !channel->isOperator(client.getFd()))
-        {
-            sendNumeric(client, "482", server.getName(), channel->getName() + " :You're not an operator");
-        }
-        if (params[2].size() > 0)
-            channel->setTopic(params[2]);
-    }
+    if (params[2].size() > 0)
+        channel->setTopic(params[2]);
 }
 
 // KICK #channel nickname :optional reason
@@ -245,9 +247,8 @@ void Commands::handleKick(Server &server, Client &client, const std::vector<std:
 {
     if (params.size() < 3)
     {
-        //insert numerik
-        sendNumeric(client, "numeric", server.getName(), params[1] + " :KICK:Not enough parameters");
-        return ;
+        sendNumeric(client, "461", server.getName(), "KICK :Not enough parameters");
+        return;
     }
     Channel *channel = server.findChannel(params[1]);
     if (channel == 0)
@@ -285,9 +286,9 @@ void Commands::handleInvite(Server &server, Client &client, const std::vector<st
 {
     if (params.size() < 3)
     {
-        //insert numeric
+        // insert numeric
         sendNumeric(client, "numeric", server.getName(), params[1] + " :KICK:Not enough parameters");
-        return ;
+        return;
     }
     Channel *channel = server.findChannel(params[2]);
     if (channel == 0)
@@ -301,15 +302,25 @@ void Commands::handleInvite(Server &server, Client &client, const std::vector<st
         sendNumeric(client, "403", server.getName(), params[1] + " :is not a member");
         return;
     }
-    
+
     if (channel->getIsInviteOnly() && !channel->isOperator(client.getFd()))
     {
-        //add numeric
+        // add numeric
         sendNumeric(client, "numeric", server.getName(), params[1] + " :channel is invite only and you are not an operator");
-        return ;
+        return;
     }
-    //should we broadcast a message here?
+    // should we broadcast a message here?
     channel->addMember(possibleMember);
+}
+
+std::string toUpper(const std::string &input)
+{
+    std::string result = input;
+    for (size_t i = 0; i < result.size(); i++)
+    {
+        result[i] = std::toupper(result[i]);
+    }
+    return result;
 }
 
 void Commands::execute(Server &server, Client &client, std::string &cmd)
@@ -325,7 +336,7 @@ void Commands::execute(Server &server, Client &client, std::string &cmd)
 
     std::string command = tokens[0];
 
-    std::map<std::string, CommandHandler>::iterator it = cmdMap.find(command);
+    std::map<std::string, CommandHandler>::iterator it = cmdMap.find(toUpper(command));
     if (it != cmdMap.end())
     {
         CommandHandler handler = it->second;
@@ -333,6 +344,6 @@ void Commands::execute(Server &server, Client &client, std::string &cmd)
     }
     else
     {
-        // error message unknown command
+        sendNumeric(client, "421", server.getName(), command + " :Unknown command");
     }
 }
