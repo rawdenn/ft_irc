@@ -15,5 +15,6 @@
 # include <fcntl.h>
 # include <cstdio>
 # include <cerrno>
+# include <ctime>
 
 #endif

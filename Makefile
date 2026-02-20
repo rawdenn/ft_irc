@@ -7,7 +7,8 @@ SRCS = srcs/main.cpp \
        srcs/Server.cpp \
        srcs/Client.cpp \
        srcs/Channel.cpp \
-       srcs/Commands.cpp
+       srcs/Commands.cpp \
+	   srcs/PreRegister.cpp
 
 OBJDIR = objs
 OBJS = $(patsubst srcs/%.cpp,$(OBJDIR)/%.o,$(SRCS))

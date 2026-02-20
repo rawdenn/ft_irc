@@ -32,6 +32,7 @@ public:
     std::string getPassword() const;
     std::string getName() const;
     bool isNicknameTaken(const std::string &nick);
+    std::string getCreationDate() const;
 
     // Client management
     void acceptClient();

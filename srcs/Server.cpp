@@ -125,6 +125,19 @@ void Server::shutdown()
     channels.clear();
 }
 
+std::string Server::getCreationDate() const
+{
+    char buffer[128];
+    std::time_t creationTime = std::time(NULL);
+    std::tm *timeinfo = std::localtime(&creationTime);
+
+    std::strftime(buffer, sizeof(buffer),
+                  "%a %b %d %H:%M:%S %Y", timeinfo);
+
+    return std::string(buffer);
+}
+
+
 std::string Server::getPassword() const
 {
     return password;
@@ -253,6 +266,8 @@ Channel* Server::createChannel(const std::string& name, Client& creator)
 
     if (!result.second)
         return NULL; // insertion failed (shouldn't happen if checked before)
+
+    std::cout << "Channel created: " << name << " by " << creator.getNickname() << std::endl;
 
     return &(result.first->second);
 }
