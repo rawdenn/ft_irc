@@ -45,7 +45,8 @@ std::string Server::getName() const
 
 bool Server::isNicknameTaken(const std::string &nick)
 {
-    for (std::map<int, Client>::iterator it = clients.begin(); it != clients.end(); ++it) {
+    for (std::map<int, Client>::iterator it = clients.begin(); it != clients.end(); ++it)
+    {
         if (it->second.getNickname() == nick)
             return true;
     }
@@ -137,7 +138,6 @@ std::string Server::getCreationDate() const
     return std::string(buffer);
 }
 
-
 std::string Server::getPassword() const
 {
     return password;
@@ -167,14 +167,33 @@ void Server::acceptClient()
     clients.insert(std::make_pair(client_fd, Client(client_fd)));
     std::cout << "New client connected: " << client_fd << std::endl;
 }
-
-// should change after adding channels
 void Server::removeClient(int fd)
 {
     std::map<int, Client>::iterator it = clients.find(fd);
-    if (it != clients.end())
-        clients.erase(it);
+    if (it == clients.end())
+        return;
 
+    Client *client = &it->second;
+
+    // Remove from all channels
+    for (std::map<std::string, Channel>::iterator ch = channels.begin();
+         ch != channels.end();)
+    {
+        ch->second.removeMember(client);
+
+        if (ch->second.getMembers().empty())
+        {
+            std::map<std::string, Channel>::iterator toDelete = ch;
+            ++ch;
+            channels.erase(toDelete);
+        }
+        else
+        {
+            ++ch;
+        }
+    }
+
+    // Remove from pollfds
     for (size_t i = 0; i < pollFds.size(); ++i)
     {
         if (pollFds[i].fd == fd)
@@ -185,6 +204,7 @@ void Server::removeClient(int fd)
     }
 
     close(fd);
+    clients.erase(it);
     std::cout << "Client disconnected: " << fd << std::endl;
 }
 
@@ -196,7 +216,7 @@ void Server::handleClientMessage(int fd)
 
     char buffer[1024];
     memset(buffer, 0, sizeof(buffer));
-    
+
     int bytes = recv(fd, buffer, sizeof(buffer) - 1, 0);
     // client closed connection
     if (bytes == 0)
@@ -227,7 +247,7 @@ void Server::executeCommand(Client &client, std::string command)
     commands.execute(*this, client, command);
 }
 
-std::map<std::string, Channel>& Server::getChannels()
+std::map<std::string, Channel> &Server::getChannels()
 {
     return (this->channels);
 }
@@ -250,7 +270,7 @@ Client *Server::getClientFromNickname(std::string nickname)
     return (NULL);
 }
 
-Channel* Server::createChannel(const std::string& name, Client& creator)
+Channel *Server::createChannel(const std::string &name, Client &creator)
 {
     Channel newChannel(name);
 

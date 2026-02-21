@@ -20,10 +20,6 @@ Channel::Channel(std::string _name)
 }
 Channel::~Channel()
 {
-    for (auto it = members.begin(); it != members.end(); ++it)
-    {
-        delete it->second;
-    }
 }
 
 const std::string &Channel::getName() const
@@ -106,6 +102,18 @@ void Channel::addMember(Client *client)
 {
     members.insert(std::make_pair(client->getFd(), client));
 }
+
+std::map<int, Client*>& Channel::getMembers()
+{
+    return members;
+}
+
+void Channel::removeMember(Client* client)
+{
+    members.erase(client->getFd());
+    operators.erase(client->getFd());
+}
+
 void Channel::removeMember(int fd)
 {
     operators.erase(fd);

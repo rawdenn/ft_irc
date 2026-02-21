@@ -286,8 +286,7 @@ void Commands::handleInvite(Server &server, Client &client, const std::vector<st
 {
     if (params.size() < 3)
     {
-        // insert numeric
-        sendNumeric(client, "numeric", server.getName(), params[1] + " :KICK:Not enough parameters");
+        sendNumeric(client, "461", server.getName(), params[1] + " :KICK:Not enough parameters");
         return;
     }
     Channel *channel = server.findChannel(params[2]);
@@ -305,8 +304,7 @@ void Commands::handleInvite(Server &server, Client &client, const std::vector<st
 
     if (channel->getIsInviteOnly() && !channel->isOperator(client.getFd()))
     {
-        // add numeric
-        sendNumeric(client, "numeric", server.getName(), params[1] + " :channel is invite only and you are not an operator");
+        sendNumeric(client, "473", server.getName(), params[1] + " :Cannot join channel (+i)");
         return;
     }
     // should we broadcast a message here?

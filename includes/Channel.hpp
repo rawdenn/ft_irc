@@ -11,10 +11,10 @@
 // MODE (later)
 
 #ifndef CHANNEL_HPP
-# define CHANNEL_HPP
+#define CHANNEL_HPP
 
-# include "Client.hpp"
-# include "ft_irc.h"
+#include "Client.hpp"
+#include "ft_irc.h"
 
 class Channel
 {
@@ -27,6 +27,7 @@ private:
     int userLimit;
     bool isInviteOnly;
     bool isTopicRestricted;
+
 public:
     Channel();
     Channel(std::string _name);
@@ -50,20 +51,22 @@ public:
     const bool &getIsTopicRestricted() const;
     void setIsTopicRestricted(bool val);
 
+    std::map<int, Client *> &getMembers();
     bool hasMember(int fd);
     bool isOperator(int fd) const;
 
     void addMember(Client *client);
+    void removeMember(Client *client);
     void removeMember(int fd);
+
 
     void addOperator(int fd);
     void removeOperator(int fd);
-    
+
     void broadcast(int senderFd, const std::string &message);
     std::string getNamesList() const;
 
     bool isEmpty() const;
 };
-
 
 #endif
