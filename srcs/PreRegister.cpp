@@ -2,13 +2,13 @@
 
 void Commands::sendNumeric(Client &client, const std::string &numeric, const std::string &server_name, const std::string &message)
 {
-    std::string fullMsg = ":" + server_name + " " + numeric + " " + client.getNickname() + " :" + message + "\r\n";
+    std::string fullMsg = ":" + server_name + " " + numeric + " " + client.getNickname() + " " + message + "\r\n";
     send(client.getFd(), fullMsg.c_str(), fullMsg.size(), 0);
 }
 
 void Commands::sendWelcome(Server &server, Client &client)
 {
-    //add info about server in 003 and 004
+    //add info about server in 004
     sendNumeric(client, "001", server.getName(), "Welcome to the IRC Network " + client.getNickname());
     sendNumeric(client, "002", server.getName(), "Your host is " + server.getName());
     sendNumeric(client, "003", server.getName(), "This server was created " + server.getCreationDate());
@@ -103,13 +103,7 @@ void Commands::handleUser(Server &server, Client &client, const std::vector<std:
         return;
     }
 
-    if (params.size() < 5 && params[4][0] != ':')
-    {
-        sendNumeric(client, "461", server.getName(), "USER :Not enough parameters");
-        return;
-    }
-
-    if (params[4][0] != ':')
+    if (params.size() < 5 || params[4][0] != ':')
     {
         sendNumeric(client, "461", server.getName(), "USER :Not enough parameters");
         return;

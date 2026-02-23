@@ -6,7 +6,7 @@ Channel::Channel()
     this->topic = "";
     this->key = "";
     this->userLimit = -1;
-    this->isInviteOnly =false;
+    this->isInviteOnly = false;
     this->isTopicRestricted = true;
 }
 Channel::Channel(std::string _name)
@@ -15,7 +15,7 @@ Channel::Channel(std::string _name)
     this->topic = "";
     this->key = "";
     this->userLimit = -1;
-    this->isInviteOnly =false;
+    this->isInviteOnly = false;
     this->isTopicRestricted = true;
 }
 Channel::~Channel()
@@ -92,9 +92,8 @@ Client *Channel::getMemberFromNickname(std::string nickname)
     return (NULL);
 }
 
-
 bool Channel::isOperator(int fd) const
-{   
+{
     return (this->operators.find(fd) != this->operators.end());
 }
 
@@ -103,12 +102,12 @@ void Channel::addMember(Client *client)
     members.insert(std::make_pair(client->getFd(), client));
 }
 
-std::map<int, Client*>& Channel::getMembers()
+std::map<int, Client *> &Channel::getMembers()
 {
     return members;
 }
 
-void Channel::removeMember(Client* client)
+void Channel::removeMember(Client *client)
 {
     members.erase(client->getFd());
     operators.erase(client->getFd());
@@ -120,7 +119,7 @@ void Channel::removeMember(int fd)
     members.erase(fd);
     if (members.empty())
     {
-        //delete channel
+        // delete channel
     }
 }
 
@@ -132,17 +131,27 @@ void Channel::removeOperator(int fd)
 {
     operators.erase(fd);
 }
-
-void Channel::broadcast(int senderFd, const std::string &message)
+std::set<int> &Channel::getOperators()
 {
-    std::map<int, Client *>::iterator it;
+    return operators;
+}
 
-    for (it = this->members.begin(); it != this->members.end(); it++)
+void Channel::broadcast(const std::string &message)
+{
+    for (std::map<int, Client *>::iterator it = members.begin();
+         it != members.end(); ++it)
     {
-        if (it->first == senderFd)
-            continue;
-        Client *client = it->second;
-        send(client->getFd(), message.c_str(), message.size(), 0);
+        send(it->second->getFd(), message.c_str(), message.size(), 0);
+    }
+}
+
+void Channel::broadcastExcept(int senderFd, const std::string &message)
+{
+    for (std::map<int, Client *>::iterator it = members.begin();
+         it != members.end(); ++it)
+    {
+        if (it->first != senderFd)
+            send(it->second->getFd(), message.c_str(), message.size(), 0);
     }
 }
 

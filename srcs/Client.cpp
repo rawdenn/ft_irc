@@ -102,6 +102,11 @@ void Client::appendBuffer(const std::string &data)
     this->buffer += data;
 }
 
+const std::string Client::getPrefix() const
+{
+    return nickname + "!" + username + "@localhost";
+}
+
 // run nc -C localhost 6667 la tzbat ma3 \r
 bool Client::hasCompleteCommand() const
 {

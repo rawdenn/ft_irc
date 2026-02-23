@@ -270,24 +270,21 @@ Client *Server::getClientFromNickname(std::string nickname)
     return (NULL);
 }
 
-Channel *Server::createChannel(const std::string &name, Client &creator)
+Channel* Server::createChannel(const std::string &name, Client &creator)
 {
-    Channel newChannel(name);
-
-    // Add creator as member
-    newChannel.addMember(&creator);
-
-    // Make creator operator
-    newChannel.addOperator(creator.getFd());
-
-    // Insert into map
     std::pair<std::map<std::string, Channel>::iterator, bool> result;
-    result = channels.insert(std::make_pair(name, newChannel));
+    result = channels.insert(std::make_pair(name, Channel(name)));
 
     if (!result.second)
-        return NULL; // insertion failed (shouldn't happen if checked before)
+        return NULL; // insertion failed
 
+    Channel &chan = result.first->second;
+
+    chan.addMember(&creator);
+    chan.addOperator(creator.getFd());
+
+    // should delete later, it's just for testing
     std::cout << "Channel created: " << name << " by " << creator.getNickname() << std::endl;
 
-    return &(result.first->second);
+    return &chan;
 }

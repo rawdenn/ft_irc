@@ -52,6 +52,7 @@ public:
     void setIsTopicRestricted(bool val);
 
     std::map<int, Client *> &getMembers();
+    std::set<int> &getOperators();
     bool hasMember(int fd);
     bool isOperator(int fd) const;
 
@@ -59,11 +60,11 @@ public:
     void removeMember(Client *client);
     void removeMember(int fd);
 
-
     void addOperator(int fd);
     void removeOperator(int fd);
 
-    void broadcast(int senderFd, const std::string &message);
+    void broadcast(const std::string &message); // to everyone
+    void broadcastExcept(int senderFd, const std::string &message);
     std::string getNamesList() const;
 
     bool isEmpty() const;
