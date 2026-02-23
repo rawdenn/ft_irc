@@ -31,6 +31,7 @@ Commands::Commands()
     cmdMap["PART"] = &Commands::handlePart;
     cmdMap["KICK"] = &Commands::handleKick;
     cmdMap["INVITE"] = &Commands::handleInvite;
+    cmdMap["MODE"] = &Commands::handleMode;
     // not implemented yet
 };
 
@@ -366,4 +367,124 @@ void Commands::execute(Server &server, Client &client, std::string &cmd)
     {
         sendNumeric(client, "421", server.getName(), command + " :Unknown command");
     }
+}
+
+// i: Set/remove Invite-only channel
+// t: Set/remove the restrictions of the TOPIC command to channel operators
+// k: Set/remove the channel key (password)
+// o: Give/take channel operator privilege
+// l: Set/remove the user limit to channel
+
+
+
+static void parseModes(Server &server, Channel *channel, const std::vector<std::string> &params)
+{
+    bool        sign = false;
+    char        c;
+    std::string modes = params[2];
+    size_t         params_index = 3;
+
+    for (size_t i = 0; i < modes.length(); i++)
+    {
+        c = modes[i];
+        if (c == '+' || c == '-')
+        {
+            if (c == '+')
+                sign = true;
+            else
+                sign = false;
+            continue ;
+        }
+        switch (c)
+        {
+            case 'i':
+            {
+                channel->setIsInviteOnly(true);
+                std::cout << "Mode " << sign << " i (invite-only)\n";
+                break;
+            }
+            case 't':
+            {
+                channel->setIsTopicRestricted(sign);
+                std::cout << "Mode " << sign << "t (topic restricted)\n";
+                break;
+            }
+            case 'k':
+            {
+                if (sign == true)
+                {
+                    if (params_index <params.size())
+                    {
+                        channel->setKey(params[params_index]);
+                        params_index++;
+                    }
+                }
+                else
+                {
+                    channel->setKey("");
+                }
+                std::cout << "Mode " << sign << "k (channel key)\n";
+                break;
+            }
+            case 'o':
+            {
+                if (params_index >= params.size())
+                {
+                    //add err message
+                    // sendNumeric(Client, "numeric", server.getName(), target + " :No such nick");
+                }
+                Client *potentialMember = server.getClientFromNickname(params[params_index]);
+                if (!potentialMember)
+                {
+                    //err message
+                    // sendNumeric(potentialMember, "401", server.getName() + " :No such nick");
+                    return;
+                }
+                params_index++;
+                if (channel->hasMember(potentialMember->getFd()))
+                {
+                    if (sign)
+                        channel->addOperator(potentialMember->getFd());
+                    else
+                        channel->removeOperator(potentialMember->getFd());
+                }
+                std::cout << "Mode " << sign << "o (operator)\n";
+                break;
+            }
+            case 'l':
+            {
+                if (!sign)
+                {
+                    channel->setUserLimit(-1);
+                    break;
+                }
+                int userLimit = atoi(params[params_index].c_str());
+                channel->setUserLimit(userLimit);
+                params_index++;
+                std::cout << "Mode " << sign << "l (user limit)\n";
+                break;
+            }
+            default:
+                // Invalid mode character
+                std::cout << "ERR_UNKNOWNMODE: '" << c << "' is unknown mode char\n";
+                break;
+        }
+    }
+}
+
+void Commands::handleMode(Server &server, Client &client, const std::vector<std::string> &params)
+{
+    if (params.size() < 3)
+    {
+        //insert numeric
+        sendNumeric(client, "numeric", server.getName(), params[1] + " :KICK:Not enough parameters");
+        return ;
+    }
+    Channel *channel = server.findChannel(params[1]);
+    if (channel == 0)
+    {
+        sendNumeric(client, "403", server.getName(), params[1] + " :No such channel");
+        return;
+    }
+    parseModes(server, channel, params);
 }

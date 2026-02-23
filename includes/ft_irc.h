@@ -16,5 +16,6 @@
 # include <cstdio>
 # include <cerrno>
 # include <ctime>
+# include <cstdlib>
 
 #endif

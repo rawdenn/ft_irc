@@ -25,6 +25,7 @@ public:
     void handlePart(Server &server, Client &client, const std::vector<std::string> &params);
     void handleKick(Server &server, Client &client, const std::vector<std::string> &params);
     void handleInvite(Server &server, Client &client, const std::vector<std::string> &params);
+    void handleMode(Server &server, Client &client, const std::vector<std::string> &params);
     private:
     std::map<std::string, CommandHandler> cmdMap;
 };
