@@ -116,6 +116,21 @@ void Commands::handleJoin(Server &server, Client &client, const std::vector<std:
         channel = server.createChannel(chanName, client);
     else
     {
+        if (channel->getHasKey())
+        {
+            if (params.size() <= 2)
+            {
+                //change error message
+                sendNumeric(client, "numeric", server.getName(), client.getNickname() + " " + chanName + " :MISSING PASS!!");
+                return ;
+            }
+            if (params.size() > 2 && channel->getKey() != params[2])
+            {
+                //change error message
+                sendNumeric(client, "numeric", server.getName(), client.getNickname() + " " + chanName + " :WRONG PASS!!");
+                return ;
+            }
+        }
         if (channel->hasMember(client.getFd()))
         {
             sendNumeric(client, "443", server.getName(), client.getNickname() + " " + chanName + " :is already on channel");
@@ -395,10 +410,12 @@ void Commands::execute(Server &server, Client &client, std::string &cmd)
 
 // i: Set/remove Invite-only channel : WORKS
 // t: Set/remove the restrictions of the TOPIC command to channel operators : WORKS
-// k: Set/remove the channel key (password) : TESTING
-// o: Give/take channel operator privilege : TESTING
+// k: Set/remove the channel key (password) : WORKS
+// o: Give/take channel operator privilege : WORKS
 // l: Set/remove the user limit to channel : WORKS
 
+//todo still: 
+//test if they work when multiples used at the same time
 
 void Commands::parseModes(Server &server, Client &client, Channel *channel, const std::vector<std::string> &params)
 {
@@ -439,12 +456,14 @@ void Commands::parseModes(Server &server, Client &client, Channel *channel, cons
                     if (params_index <params.size())
                     {
                         channel->setKey(params[params_index]);
+                        channel->setHasKey(true);
                         params_index++;
                     }
                 }
                 else
                 {
                     channel->setKey("");
+                    channel->setHasKey(false);
                 }
                 std::cout << "Mode " << sign << "k (channel key)\n";
                 break;
@@ -506,6 +525,12 @@ void Commands::handleMode(Server &server, Client &client, const std::vector<std:
     {
         sendNumeric(client, "403", server.getName(), params[2] + " :No such channel");
         return;
+    }
+    if (!channel->isOperator(client.getFd()))
+    {
+        //change error message
+        sendNumeric(client, "403", server.getName(), params[2] + " :not an operator");
+        return ;
     }
     parseModes(server, client, channel, params);
 }

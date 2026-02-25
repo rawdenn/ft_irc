@@ -9,6 +9,7 @@ Channel::Channel()
     this->userNumber = 0;
     this->isInviteOnly = false;
     this->isTopicRestricted = true;
+    this->hasKey = false;
 }
 
 Channel::Channel(std::string _name)
@@ -20,6 +21,7 @@ Channel::Channel(std::string _name)
     this->userNumber = 0;
     this->isInviteOnly = false;
     this->isTopicRestricted = true;
+    this->hasKey = false;
 }
 
 Channel::~Channel()
@@ -94,6 +96,17 @@ const bool &Channel::getIsTopicRestricted() const
 void Channel::setIsTopicRestricted(bool val)
 {
     this->isTopicRestricted = val;
+}
+
+
+const bool &Channel::getHasKey() const
+{
+    return (this->hasKey);
+}
+
+void Channel::setHasKey(bool val)
+{
+    this->hasKey = val;
 }
 
 bool Channel::hasMember(int fd)

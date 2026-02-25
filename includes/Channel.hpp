@@ -17,6 +17,7 @@ private:
     int userNumber;
     bool isInviteOnly;
     bool isTopicRestricted;
+    bool hasKey;
 
 public:
     Channel();
@@ -44,6 +45,9 @@ public:
 
     const bool &getIsTopicRestricted() const;
     void setIsTopicRestricted(bool val);
+
+    const bool &getHasKey() const;
+    void setHasKey(bool val);
 
     std::map<int, Client *> &getMembers();
     std::set<int> &getOperators();
