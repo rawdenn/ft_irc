@@ -282,6 +282,7 @@ Channel* Server::createChannel(const std::string &name, Client &creator)
 
     chan.addMember(&creator);
     chan.addOperator(creator.getFd());
+    chan.incrementUserNumber();
 
     // should delete later, it's just for testing
     std::cout << "Channel created: " << name << " by " << creator.getNickname() << std::endl;

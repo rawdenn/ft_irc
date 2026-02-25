@@ -11,8 +11,10 @@ private:
     std::string topic;
     std::map<int, Client *> members;
     std::set<int> operators;
+    std::set<int> invitedMembers;
     std::string key;
     int userLimit;
+    int userNumber;
     bool isInviteOnly;
     bool isTopicRestricted;
 
@@ -33,6 +35,10 @@ public:
     const int &getUserLimit() const;
     void setUserLimit(int newUserLimit);
 
+    const int &getUserNumber() const;
+    void incrementUserNumber();
+    void decrementUserNumber();
+
     const bool &getIsInviteOnly() const;
     void setIsInviteOnly(bool val);
 
@@ -41,6 +47,9 @@ public:
 
     std::map<int, Client *> &getMembers();
     std::set<int> &getOperators();
+
+    bool isinvited(int fd) const;
+
     bool hasMember(int fd);
     bool isOperator(int fd) const;
 
@@ -50,6 +59,9 @@ public:
 
     void addOperator(int fd);
     void removeOperator(int fd);
+
+    void addToInvitedMembersList(int fd);
+    void removeFromInvitedMembersList(int fd);
 
     void broadcast(const std::string &message); // to everyone
     void broadcastExcept(int senderFd, const std::string &message);

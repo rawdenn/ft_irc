@@ -6,6 +6,7 @@ Channel::Channel()
     this->topic = "";
     this->key = "";
     this->userLimit = -1;
+    this->userNumber = 0;
     this->isInviteOnly = false;
     this->isTopicRestricted = true;
 }
@@ -16,6 +17,7 @@ Channel::Channel(std::string _name)
     this->topic = "";
     this->key = "";
     this->userLimit = -1;
+    this->userNumber = 0;
     this->isInviteOnly = false;
     this->isTopicRestricted = true;
 }
@@ -57,6 +59,21 @@ const int &Channel::getUserLimit() const
 void Channel::setUserLimit(int newUserLimit)
 {
     this->userLimit = newUserLimit;
+}
+
+const int &Channel::getUserNumber() const
+{
+    return (this->userNumber);
+}
+
+void Channel::incrementUserNumber()
+{
+    this->userNumber++;
+}
+
+void Channel::decrementUserNumber()
+{
+    this->userNumber--;
 }
 
 const bool &Channel::getIsInviteOnly() const
@@ -136,6 +153,21 @@ void Channel::removeOperator(int fd)
 std::set<int> &Channel::getOperators()
 {
     return operators;
+}
+
+bool Channel::isinvited(int fd) const
+{
+    return (this->invitedMembers.find(fd) != this->invitedMembers.end());
+}
+
+void Channel::addToInvitedMembersList(int fd)
+{
+    invitedMembers.insert(fd);
+}
+
+void Channel::removeFromInvitedMembersList(int fd)
+{
+    invitedMembers.erase(fd);
 }
 
 void Channel::broadcast(const std::string &message)
