@@ -23,12 +23,11 @@ private:
     bool welcomeSent;
 
 public:
-    // might change later
+    // need to change later
     bool hasSentPass;
     bool hasSentNick;
     bool hasSentUser;
     Client(int fd);
-    // Client(int fd, const std::string &nick, const std::string &user, const std::string &real);
     ~Client();
 
     int getFd() const;

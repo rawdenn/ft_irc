@@ -41,7 +41,6 @@ public:
     // Command handling
     void handleClientMessage(int fd);
     void executeCommand(Client &client, std::string command);
-    // void broadcastMessage(const std::string& message, int excludeFd = -1);
 
     // Channel management
     std::map<std::string, Channel> &getChannels();

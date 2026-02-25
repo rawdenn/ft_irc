@@ -1,15 +1,3 @@
-// channel name
-// list of clients
-// operators
-// topic
-
-// Channel handles:
-// JOIN
-// PART
-// TOPIC
-// KICK
-// MODE (later)
-
 #ifndef CHANNEL_HPP
 #define CHANNEL_HPP
 

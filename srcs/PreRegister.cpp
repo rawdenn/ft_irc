@@ -8,11 +8,10 @@ void Commands::sendNumeric(Client &client, const std::string &numeric, const std
 
 void Commands::sendWelcome(Server &server, Client &client)
 {
-    //add info about server in 004
     sendNumeric(client, "001", server.getName(), "Welcome to the IRC Network " + client.getNickname());
     sendNumeric(client, "002", server.getName(), "Your host is " + server.getName());
     sendNumeric(client, "003", server.getName(), "This server was created " + server.getCreationDate());
-    sendNumeric(client, "004", server.getName(), "... server info ...");
+    sendNumeric(client, "004", server.getName(), "... server info ..."); // add more info here
 }
 
 void Commands::handlePass(Server &server, Client &client, const std::vector<std::string> &params)

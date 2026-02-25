@@ -9,6 +9,7 @@ Channel::Channel()
     this->isInviteOnly = false;
     this->isTopicRestricted = true;
 }
+
 Channel::Channel(std::string _name)
 {
     this->name = _name;
@@ -18,6 +19,7 @@ Channel::Channel(std::string _name)
     this->isInviteOnly = false;
     this->isTopicRestricted = true;
 }
+
 Channel::~Channel()
 {
 }

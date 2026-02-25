@@ -17,8 +17,6 @@
 
 */
 
-// need to check when a client disconnect, if they joined channels, we need to remove them from the channels
-
 Commands::Commands()
 {
     cmdMap["PASS"] = &Commands::handlePass;
@@ -376,8 +374,7 @@ void Commands::execute(Server &server, Client &client, std::string &cmd)
 // l: Set/remove the user limit to channel
 
 
-
-static void parseModes(Server &server, Channel *channel, const std::vector<std::string> &params)
+void Commands::parseModes(Server &server, Client &client, Channel *channel, const std::vector<std::string> &params)
 {
     bool        sign = false;
     char        c;
@@ -430,15 +427,14 @@ static void parseModes(Server &server, Channel *channel, const std::vector<std::
             {
                 if (params_index >= params.size())
                 {
-                    //add err message
-                    // sendNumeric(Client, "numeric", server.getName(), target + " :No such nick");
+                    sendNumeric(client, "461", server.getName(), " :MODE:Not enough parameters");
+                    return;
                 }
                 Client *potentialMember = server.getClientFromNickname(params[params_index]);
                 if (!potentialMember)
                 {
-                    //err message
-                    // sendNumeric(potentialMember, "401", server.getName() + " :No such nick");
-                    return;
+                    sendNumeric(client, "401", server.getName(), " :No such nick");
+                    return; 
                 }
                 params_index++;
                 if (channel->hasMember(potentialMember->getFd()))
@@ -476,8 +472,7 @@ void Commands::handleMode(Server &server, Client &client, const std::vector<std:
 {
     if (params.size() < 3)
     {
-        //insert numeric
-        sendNumeric(client, "numeric", server.getName(), params[1] + " :KICK:Not enough parameters");
+        sendNumeric(client, "461", server.getName(), params[1] + " :MODE:Not enough parameters");
         return ;
     }
     Channel *channel = server.findChannel(params[1]);
@@ -486,5 +481,5 @@ void Commands::handleMode(Server &server, Client &client, const std::vector<std:
         sendNumeric(client, "403", server.getName(), params[1] + " :No such channel");
         return;
     }
-    parseModes(server, channel, params);
+    parseModes(server, client, channel, params);
 }
