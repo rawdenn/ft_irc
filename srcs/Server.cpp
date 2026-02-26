@@ -146,6 +146,7 @@ std::string Server::getPassword() const
 void Server::acceptClient()
 {
     sockaddr_in client_addr;
+    memset(&client_addr, 0, sizeof(client_addr));
     socklen_t client_len = sizeof(client_addr);
 
     int client_fd = accept(serverFd, (sockaddr *)&client_addr, &client_len);
@@ -159,7 +160,7 @@ void Server::acceptClient()
 
     set_non_blocking(client_fd);
 
-    pollfd client_poll;
+    pollfd client_poll = {};
     client_poll.fd = client_fd;
     client_poll.events = POLLIN;
     pollFds.push_back(client_poll);
@@ -234,8 +235,20 @@ void Server::handleClientMessage(int fd)
 
     it->second.appendBuffer(std::string(buffer, bytes));
 
-    while (it->second.hasCompleteCommand())
+    // while (it->second.hasCompleteCommand())
+    // {
+    //     std::string cmd = it->second.extractCommand();
+    //     executeCommand(it->second, cmd);
+    //     if (!it)
+    //         break;
+    // }
+    while (true)
     {
+        it = clients.find(fd);
+        if (it == clients.end())
+            return ;
+        if (!it->second.hasCompleteCommand())
+            return ;
         std::string cmd = it->second.extractCommand();
         executeCommand(it->second, cmd);
     }

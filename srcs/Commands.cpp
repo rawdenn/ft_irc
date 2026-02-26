@@ -30,7 +30,6 @@ Commands::Commands()
     cmdMap["KICK"] = &Commands::handleKick;
     cmdMap["INVITE"] = &Commands::handleInvite;
     cmdMap["MODE"] = &Commands::handleMode;
-    // not implemented yet
 };
 
 Commands::~Commands() {}
@@ -152,9 +151,6 @@ void Commands::handleJoin(Server &server, Client &client, const std::vector<std:
         channel->addMember(&client);
         channel->incrementUserNumber();
         channel->removeFromInvitedMembersList(client.getFd());
-        // just testing operators
-        // if (channel->getOperators().empty())
-        //     channel->addOperator(client.getFd());
     }
 
     std::string joinMsg = ":" + client.getNickname() + "!" + client.getUsername() + "@localhost JOIN " + chanName + "\r\n";

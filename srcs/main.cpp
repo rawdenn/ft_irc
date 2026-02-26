@@ -8,13 +8,17 @@ int main(int argc, char const **argv)
         std::cerr << "Usage: " << argv[0] << " <port> <password>" << std::endl;
         return 1;
     }
-
+    main_signal();
     try
     {
         int port = std::atoi(argv[1]);
         std::string password = argv[2];
         Server server(port, password);
-        server.run();
+        while (g_running)
+        {
+            server.run();
+        }
+        server.shutdown();
     }
     catch(const std::exception& e)
     {

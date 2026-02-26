@@ -17,5 +17,9 @@
 # include <cerrno>
 # include <ctime>
 # include <cstdlib>
+# include <csignal>
+
+extern int	g_running;
+void	main_signal(void);
 
 #endif
