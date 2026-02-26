@@ -128,177 +128,169 @@ void Server::shutdown()
 
 std::string Server::getCreationDate() const
 {
-    char buffer[128];
-    std::time_t creationTime = std::time(NULL);
-    std::tm *timeinfo = std::localtime(&creationTime);
+	char buffer[128];
+	std::time_t creationTime = std::time(NULL);
+	std::tm *timeinfo = std::localtime(&creationTime);
 
-    std::strftime(buffer, sizeof(buffer),
-                  "%a %b %d %H:%M:%S %Y", timeinfo);
+	std::strftime(buffer, sizeof(buffer),
+					"%a %b %d %H:%M:%S %Y", timeinfo);
 
-    return std::string(buffer);
+	return std::string(buffer);
 }
 
 std::string Server::getPassword() const
 {
-    return password;
+	return password;
 }
 
 void Server::acceptClient()
 {
-    sockaddr_in client_addr;
-    memset(&client_addr, 0, sizeof(client_addr));
-    socklen_t client_len = sizeof(client_addr);
+	sockaddr_in client_addr;
+	memset(&client_addr, 0, sizeof(client_addr));
+	socklen_t client_len = sizeof(client_addr);
 
-    int client_fd = accept(serverFd, (sockaddr *)&client_addr, &client_len);
-    if (client_fd < 0)
-    {
-        // in non-blocking mode, accept can return EWOULDBLOCK or EAGAIN if there are no pending connections
-        if (errno != EWOULDBLOCK && errno != EAGAIN)
-            perror("accept");
-        return;
-    }
+	int client_fd = accept(serverFd, (sockaddr *)&client_addr, &client_len);
+	if (client_fd < 0)
+	{
+		// in non-blocking mode, accept can return EWOULDBLOCK or EAGAIN if there are no pending connections
+		if (errno != EWOULDBLOCK && errno != EAGAIN)
+			perror("accept");
+		return;
+	}
 
-    set_non_blocking(client_fd);
+	set_non_blocking(client_fd);
 
-    pollfd client_poll = {};
-    client_poll.fd = client_fd;
-    client_poll.events = POLLIN;
-    pollFds.push_back(client_poll);
+	pollfd client_poll = {};
+	client_poll.fd = client_fd;
+	client_poll.events = POLLIN;
+	pollFds.push_back(client_poll);
 
-    clients.insert(std::make_pair(client_fd, Client(client_fd)));
-    std::cout << "New client connected: " << client_fd << std::endl;
+	clients.insert(std::make_pair(client_fd, Client(client_fd)));
+	std::cout << "New client connected: " << client_fd << std::endl;
 }
 void Server::removeClient(int fd)
 {
-    std::map<int, Client>::iterator it = clients.find(fd);
-    if (it == clients.end())
-        return;
+	std::map<int, Client>::iterator it = clients.find(fd);
+	if (it == clients.end())
+		return;
 
-    Client *client = &it->second;
+	Client *client = &it->second;
 
-    // Remove from all channels
-    for (std::map<std::string, Channel>::iterator ch = channels.begin();
-         ch != channels.end();)
-    {
-        ch->second.removeMember(client);
+	// Remove from all channels
+	for (std::map<std::string, Channel>::iterator ch = channels.begin();
+			ch != channels.end();)
+	{
+		ch->second.removeMember(client);
 
-        if (ch->second.getMembers().empty())
-        {
-            std::map<std::string, Channel>::iterator toDelete = ch;
-            ++ch;
-            channels.erase(toDelete);
-        }
-        else
-        {
-            ++ch;
-        }
-    }
+		if (ch->second.getMembers().empty())
+		{
+			std::map<std::string, Channel>::iterator toDelete = ch;
+			++ch;
+			channels.erase(toDelete);
+		}
+		else
+		{
+			++ch;
+		}
+	}
 
-    // Remove from pollfds
-    for (size_t i = 0; i < pollFds.size(); ++i)
-    {
-        if (pollFds[i].fd == fd)
-        {
-            pollFds.erase(pollFds.begin() + i);
-            break;
-        }
-    }
+	// Remove from pollfds
+	for (size_t i = 0; i < pollFds.size(); ++i)
+	{
+		if (pollFds[i].fd == fd)
+		{
+			pollFds.erase(pollFds.begin() + i);
+			break;
+		}
+	}
 
-    close(fd);
-    clients.erase(it);
-    std::cout << "Client disconnected: " << fd << std::endl;
+	close(fd);
+	clients.erase(it);
+	std::cout << "Client disconnected: " << fd << std::endl;
 }
 
 void Server::handleClientMessage(int fd)
 {
-    std::map<int, Client>::iterator it = clients.find(fd);
-    if (it == clients.end())
-        return;
+	std::map<int, Client>::iterator it = clients.find(fd);
+	if (it == clients.end())
+		return;
 
-    char buffer[1024];
-    memset(buffer, 0, sizeof(buffer));
+	char buffer[1024];
+	memset(buffer, 0, sizeof(buffer));
 
-    int bytes = recv(fd, buffer, sizeof(buffer) - 1, 0);
-    // client closed connection
-    if (bytes == 0)
-    {
-        removeClient(fd);
-        return;
-    }
-    if (bytes < 0)
-    {
-        // in non-blocking mode, recv can return EWOULDBLOCK or EAGAIN if there's no data to read
-        if (errno != EWOULDBLOCK && errno != EAGAIN)
-            removeClient(fd);
-        return;
-    }
+	int bytes = recv(fd, buffer, sizeof(buffer) - 1, 0);
+	// client closed connection
+	if (bytes == 0)
+	{
+		removeClient(fd);
+		return;
+	}
+	if (bytes < 0)
+	{
+		// in non-blocking mode, recv can return EWOULDBLOCK or EAGAIN if there's no data to read
+		if (errno != EWOULDBLOCK && errno != EAGAIN)
+			removeClient(fd);
+		return;
+	}
 
-    it->second.appendBuffer(std::string(buffer, bytes));
-
-    // while (it->second.hasCompleteCommand())
-    // {
-    //     std::string cmd = it->second.extractCommand();
-    //     executeCommand(it->second, cmd);
-    //     if (!it)
-    //         break;
-    // }
-    while (true)
-    {
-        it = clients.find(fd);
-        if (it == clients.end())
-            return ;
-        if (!it->second.hasCompleteCommand())
-            return ;
-        std::string cmd = it->second.extractCommand();
-        executeCommand(it->second, cmd);
-    }
+	it->second.appendBuffer(std::string(buffer, bytes));
+	while (true)
+	{
+		it = clients.find(fd);
+		if (it == clients.end())
+			return ;
+		if (!it->second.hasCompleteCommand())
+			return ;
+		std::string cmd = it->second.extractCommand();
+		executeCommand(it->second, cmd);
+	}
 }
 
 void Server::executeCommand(Client &client, std::string command)
 {
-    Commands commands;
-    commands.execute(*this, client, command);
+	Commands commands;
+	commands.execute(*this, client, command);
 }
 
 std::map<std::string, Channel> &Server::getChannels()
 {
-    return (this->channels);
+	return (this->channels);
 }
 
 Channel *Server::findChannel(const std::string &name)
 {
-    std::map<std::string, Channel>::iterator it = channels.find(name);
-    if (it == channels.end())
-        return 0;
-    return &it->second;
+	std::map<std::string, Channel>::iterator it = channels.find(name);
+	if (it == channels.end())
+		return (0);
+	return (&it->second);
 }
 
-Client *Server::getClientFromNickname(std::string nickname)
+Client	*Server::getClientFromNickname(std::string nickname)
 {
-    std::map<int, Client>::iterator it;
+	std::map<int, Client>::iterator it;
 
-    for (it = clients.begin(); it != clients.end(); ++it)
-        if (it->second.getNickname() == nickname)
-            return (&it->second);
-    return (NULL);
+	for (it = clients.begin(); it != clients.end(); ++it)
+		if (it->second.getNickname() == nickname)
+			return (&it->second);
+	return (NULL);
 }
 
 Channel* Server::createChannel(const std::string &name, Client &creator)
 {
-    std::pair<std::map<std::string, Channel>::iterator, bool> result;
-    result = channels.insert(std::make_pair(name, Channel(name)));
+	std::pair<std::map<std::string, Channel>::iterator, bool> result;
+	result = channels.insert(std::make_pair(name, Channel(name)));
 
-    if (!result.second)
-        return NULL; // insertion failed
+	if (!result.second)
+		return NULL; // insertion failed
 
-    Channel &chan = result.first->second;
+	Channel &chan = result.first->second;
 
-    chan.addMember(&creator);
-    chan.addOperator(creator.getFd());
-    chan.incrementUserNumber();
+	chan.addMember(&creator);
+	chan.addOperator(creator.getFd());
+	chan.incrementUserNumber();
 
-    // should delete later, it's just for testing
-    std::cout << "Channel created: " << name << " by " << creator.getNickname() << std::endl;
+	// should delete later, it's just for testing
+	std::cout << "Channel created: " << name << " by " << creator.getNickname() << std::endl;
 
-    return &chan;
+	return &chan;
 }

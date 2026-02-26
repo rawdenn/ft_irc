@@ -9,7 +9,10 @@ SRCS = srcs/main.cpp \
        srcs/Channel.cpp \
        srcs/Commands.cpp \
 	   srcs/PreRegister.cpp \
-	   srcs/signals.cpp 
+	   srcs/signals.cpp \
+	   srcs/CommandJoin.cpp \
+	   srcs/CommandMode.cpp \
+	   srcs/CommandsOthers.cpp
 
 
 OBJDIR = objs
