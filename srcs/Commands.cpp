@@ -8,7 +8,7 @@
 
     After registration:
         - JOIN <channel>
-        - PART <channel> //not sure if it should be implemented yet
+        - PART <channel>
         - TOPIC <channel> :<topic>
         - KICK <channel> <user>
         - MODE <channel> <mode> <user>
@@ -87,27 +87,89 @@ bool isValidChannelName(const std::string &name)
     return true;
 }
 
-// fixed some things but not sure if it covers all cases
-void Commands::handleJoin(Server &server, Client &client, const std::vector<std::string> &params)
+static bool checkRegistered(Server &server, Client &client)
 {
     if (!client.isRegistered())
     {
         sendNumeric(client, "451", server.getName(), ":You have not registered");
-        return;
+        return false;
     }
+    return true;
+}
 
-    if (params.size() < 2)
+static bool validateParams(Server &server, Client &client, const std::vector<std::string> &params, size_t params_num)
+{
+    if (params.size() < params_num)
     {
         sendNumeric(client, "461", server.getName(), "JOIN :Not enough parameters");
-        return;
+        return false;
     }
+    return true;
+}
 
-    std::string chanName = params[1];
+static bool ValidateChannelName(std::string chanName, Server &server, Client &client)
+{
     if (!isValidChannelName(chanName))
     {
         sendNumeric(client, "476", server.getName(), client.getNickname() + " " + chanName + " :Bad Channel Mask");
-        return;
+        return false;
     }
+    return true ;
+
+}
+
+static bool validateKey(Server &server, Client &client, const std::vector<std::string> &params, Channel *channel)
+{
+    if (channel->getHasKey())
+    {
+        if (params.size() <= 2)
+        {
+            //change error message
+            sendNumeric(client, "numeric", server.getName(), client.getNickname() + " " + channel->getName() + " :MISSING PASS!!");
+            return false;
+        }
+        if (params.size() > 2 && channel->getKey() != params[2])
+        {
+            //change error message
+            sendNumeric(client, "numeric", server.getName(), client.getNickname() + " " + channel->getName() + " :WRONG PASS!!");
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool canJoinChannel(Server &server, Client &client, Channel *channel)
+{
+    if (channel->hasMember(client.getFd()))
+    {
+        sendNumeric(client, "443", server.getName(), client.getNickname() + " " + channel->getName() + " :is already on channel");
+        return false;
+    }
+    if (channel->getIsInviteOnly() && !channel->isinvited(client.getFd()))
+    {
+        //change error message to correct format
+        sendNumeric(client, "numeric", server.getName(), client.getNickname() + " " + channel->getName() + " :cannot join channel, not invited and channel is invite only");
+        return false;
+    }
+    if (channel->getUserNumber() == channel->getUserLimit())
+    {
+        std::cout << "user number " << channel->getUserNumber() << "user limit: " << channel->getUserLimit() << std::endl;
+        //change error message to correct format
+        sendNumeric(client, "numeric", server.getName(), client.getNickname() + " " + channel->getName() + " :cannot join channel, channel is full");
+        return false;
+    }
+    return (true);
+}
+
+void Commands::handleJoin(Server &server, Client &client, const std::vector<std::string> &params)
+{
+    if (!checkRegistered(server, client)
+        || !validateParams(server, client, params, 2))
+        return;
+
+    std::string chanName = params[1];
+    if (!ValidateChannelName(chanName, server, client))
+        return ;
 
     Channel *channel = server.findChannel(chanName);
 
@@ -115,46 +177,15 @@ void Commands::handleJoin(Server &server, Client &client, const std::vector<std:
         channel = server.createChannel(chanName, client);
     else
     {
-        if (channel->getHasKey())
-        {
-            if (params.size() <= 2)
-            {
-                //change error message
-                sendNumeric(client, "numeric", server.getName(), client.getNickname() + " " + chanName + " :MISSING PASS!!");
-                return ;
-            }
-            if (params.size() > 2 && channel->getKey() != params[2])
-            {
-                //change error message
-                sendNumeric(client, "numeric", server.getName(), client.getNickname() + " " + chanName + " :WRONG PASS!!");
-                return ;
-            }
-        }
-        if (channel->hasMember(client.getFd()))
-        {
-            sendNumeric(client, "443", server.getName(), client.getNickname() + " " + chanName + " :is already on channel");
-            return;
-        }
-        if (channel->getIsInviteOnly() && !channel->isinvited(client.getFd()))
-        {
-            //change error message to correct format
-            sendNumeric(client, "numeric", server.getName(), client.getNickname() + " " + chanName + " :cannot join channel, not invited and channel is invite only");
-            return;
-        }
-        if (channel->getUserNumber() == channel->getUserLimit())
-        {
-            std::cout << "user number " << channel->getUserNumber() << "user limit: " << channel->getUserLimit() << std::endl;
-            //change error message to correct format
-            sendNumeric(client, "numeric", server.getName(), client.getNickname() + " " + chanName + " :cannot join channel, channel is full");
-            return;
-        }
+        if (!validateKey(server, client, params, channel)
+            || !canJoinChannel(server, client, channel))
+            return ;
         channel->addMember(&client);
         channel->incrementUserNumber();
         channel->removeFromInvitedMembersList(client.getFd());
     }
 
     std::string joinMsg = ":" + client.getNickname() + "!" + client.getUsername() + "@localhost JOIN " + chanName + "\r\n";
-
     channel->broadcast(joinMsg);
 
     if (!channel->getTopic().empty())
@@ -179,21 +210,43 @@ static std::string concatinate_params(const std::vector<std::string> &params, in
     return (message);
 }
 
+static bool sendToChannel(Server &server, Client &client, std::string message, std::string target)
+{
+    Channel *channel = server.findChannel(target);
+    if (!channel)
+    {
+        sendNumeric(client, "403", server.getName(), target + " :No such channel");
+        return false;
+    }
+    if (!channel->hasMember(client.getFd()))
+    {
+        sendNumeric(client, "442", server.getName(), target + " :You're not on that channel");
+        return false;
+    }
+    std::string fullMsg = ":" + client.getPrefix() + " PRIVMSG " + target + " :" + message + "\r\n";
+    channel->broadcastExcept(client.getFd(), fullMsg);
+    return true ;
+}
+
+static bool sendMsgToClient(Server &server, Client &client, std::string message, std::string target)
+{
+    Client *recipient = server.getClientFromNickname(target);
+    if (!recipient)
+    {
+        sendNumeric(client, "401", server.getName(), target + " :No such nick");
+        return false;
+    }
+    std::string fullMsg = ":" + client.getPrefix() + " PRIVMSG " + recipient->getNickname() + " :" + message + "\r\n";
+    send(recipient->getFd(), fullMsg.c_str(), fullMsg.size(), 0);
+    return true ;
+}
+
 void Commands::handlePrivmsg(Server &server,
                              Client &client,
                              const std::vector<std::string> &params)
 {
-    if (!client.isRegistered())
-    {
-        sendNumeric(client, "451", server.getName(), ":You have not registered");
+    if (!checkRegistered(server, client) || validateParams(server, client, params, 3))
         return;
-    }
-
-    if (params.size() < 3)
-    {
-        sendNumeric(client, "461", server.getName(), "PRIVMSG :Not enough parameters");
-        return;
-    }
 
     std::string message = concatinate_params(params, 2);
     if (message.empty())
@@ -205,40 +258,17 @@ void Commands::handlePrivmsg(Server &server,
     std::string target = params[1];
     if (target[0] == '#')
     {
-        Channel *channel = server.findChannel(target);
-        if (!channel)
-        {
-            sendNumeric(client, "403", server.getName(), target + " :No such channel");
-            return;
-        }
-        if (!channel->hasMember(client.getFd()))
-        {
-            sendNumeric(client, "442", server.getName(), target + " :You're not on that channel");
-            return;
-        }
-        std::string fullMsg = ":" + client.getPrefix() + " PRIVMSG " + target + " :" + message + "\r\n";
-        channel->broadcastExcept(client.getFd(), fullMsg);
+        if (!sendToChannel(server, client, message, target))
+            return ;
     }
-    else
-    {
-        Client *recipient = server.getClientFromNickname(target);
-        if (!recipient)
-        {
-            sendNumeric(client, "401", server.getName(), target + " :No such nick");
-            return;
-        }
-        std::string fullMsg = ":" + client.getPrefix() + " PRIVMSG " + recipient->getNickname() + " :" + message + "\r\n";
-        send(recipient->getFd(), fullMsg.c_str(), fullMsg.size(), 0);
-    }
+    else if (!sendMsgToClient(server, client, message, target))
+        return ;
 }
 
 void Commands::handlePart(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (params.size() < 2)
-    {
-        sendNumeric(client, "461", server.getName(), "PART :Not enough parameters");
+    if (!validateParams(server, client, params, 2))
         return;
-    }
 
     Channel *channel = server.findChannel(params[1]);
     if (channel == 0)
@@ -256,11 +286,8 @@ void Commands::handlePart(Server &server, Client &client, const std::vector<std:
 
 void Commands::handleTopic(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (params.size() < 2)
-    {
-        sendNumeric(client, "461", server.getName(), "TOPIC :Not enough parameters");
+    if (!validateParams(server, client, params, 2))
         return;
-    }
 
     if (params[1].c_str()[0] != '#')
     {
@@ -300,11 +327,9 @@ void Commands::handleTopic(Server &server, Client &client, const std::vector<std
 // KICK #channel nickname :optional reason
 void Commands::handleKick(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (params.size() < 3)
-    {
-        sendNumeric(client, "461", server.getName(), "KICK :Not enough parameters");
+    if (!validateParams(server, client, params, 3))
         return;
-    }
+
     Channel *channel = server.findChannel(params[1]);
     if (channel == 0)
     {
@@ -340,11 +365,9 @@ void Commands::handleKick(Server &server, Client &client, const std::vector<std:
 // example: INVITE nickname #channel
 void Commands::handleInvite(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (params.size() < 3)
-    {
-        sendNumeric(client, "461", server.getName(), params[1] + " :INVITE:Not enough parameters");
+    if (!validateParams(server, client, params, 3))
         return;
-    }
+
     Channel *channel = server.findChannel(params[2]);
     if (channel == 0)
     {
@@ -410,15 +433,54 @@ void Commands::execute(Server &server, Client &client, std::string &cmd)
 // o: Give/take channel operator privilege : WORKS
 // l: Set/remove the user limit to channel : WORKS
 
-//todo still: 
-//test if they work when multiples used at the same time
+void parseModesUserLimit(Channel *channel, const std::vector<std::string> &params, size_t *params_index, bool sign)
+{
+    if (!sign)
+    {
+        channel->setUserLimit(-1);
+        return ;
+    }
+    int userLimit = atoi(params[*params_index].c_str());
+    channel->setUserLimit(userLimit);
+    (*params_index)++;
+    std::cout << "Mode " << sign << "l (user limit)\n";
+}
+
+void parseModesOperator(Client *potentialMember, Channel *channel, size_t *params_index, bool sign)
+{
+    if (channel->hasMember(potentialMember->getFd()))
+    {
+        if (sign)
+            channel->addOperator(potentialMember->getFd());
+        else
+            channel->removeOperator(potentialMember->getFd());
+    }
+    (*params_index)++;
+    std::cout << "Mode " << sign << "o (operator)\n";
+}
+
+static void parseModesKey(Channel *channel, const std::vector<std::string> &params, size_t *params_index, bool sign)
+{
+    if (sign == true)
+    {
+        if (*params_index <params.size())
+        {
+            channel->setKey(params[*params_index]);
+            (*params_index)++;
+        }
+    }
+    else
+        channel->setKey("");
+    channel->setHasKey(sign);
+    std::cout << "Mode " << sign << "k (channel key)\n";
+}
 
 void Commands::parseModes(Server &server, Client &client, Channel *channel, const std::vector<std::string> &params)
 {
     bool        sign = false;
     char        c;
-    std::string modes = params[1];
-    size_t         params_index = 3;
+    std::string modes = params[2];
+    size_t      params_index = 3;
 
     for (size_t i = 0; i < modes.length(); i++)
     {
@@ -436,32 +498,16 @@ void Commands::parseModes(Server &server, Client &client, Channel *channel, cons
             case 'i':
             {
                 channel->setIsInviteOnly(sign);
-                std::cout << "Mode " << sign << " i (invite-only)\n";
                 break;
             }
             case 't':
             {
                 channel->setIsTopicRestricted(sign);
-                std::cout << "Mode " << sign << "t (topic restricted)\n";
                 break;
             }
             case 'k':
             {
-                if (sign == true)
-                {
-                    if (params_index <params.size())
-                    {
-                        channel->setKey(params[params_index]);
-                        channel->setHasKey(true);
-                        params_index++;
-                    }
-                }
-                else
-                {
-                    channel->setKey("");
-                    channel->setHasKey(false);
-                }
-                std::cout << "Mode " << sign << "k (channel key)\n";
+                parseModesKey(channel, params, &params_index, sign);
                 break;
             }
             case 'o':
@@ -469,36 +515,25 @@ void Commands::parseModes(Server &server, Client &client, Channel *channel, cons
                 if (params_index >= params.size())
                 {
                     sendNumeric(client, "461", server.getName(), " :MODE:Not enough parameters");
-                    return;
+                    break ;
                 }
                 Client *potentialMember = server.getClientFromNickname(params[params_index]);
                 if (!potentialMember)
                 {
                     sendNumeric(client, "401", server.getName(), " :No such nick");
-                    return; 
+                    break ;
                 }
-                params_index++;
-                if (channel->hasMember(potentialMember->getFd()))
-                {
-                    if (sign)
-                        channel->addOperator(potentialMember->getFd());
-                    else
-                        channel->removeOperator(potentialMember->getFd());
-                }
-                std::cout << "Mode " << sign << "o (operator)\n";
+                parseModesOperator(potentialMember, channel, &params_index, sign);
                 break;
             }
             case 'l':
             {
-                if (!sign)
+                if (params_index >= params.size())
                 {
-                    channel->setUserLimit(-1);
-                    break;
+                    sendNumeric(client, "461", server.getName(), " :MODE:Not enough parameters");
+                    break ;
                 }
-                int userLimit = atoi(params[params_index].c_str());
-                channel->setUserLimit(userLimit);
-                params_index++;
-                std::cout << "Mode " << sign << "l (user limit)\n";
+                parseModesUserLimit(channel, params, &params_index, sign);
                 break;
             }
             default:
@@ -511,21 +546,18 @@ void Commands::parseModes(Server &server, Client &client, Channel *channel, cons
 
 void Commands::handleMode(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (params.size() < 3)
-    {
-        sendNumeric(client, "461", server.getName(), params[1] + " :MODE:Not enough parameters");
-        return ;
-    }
-    Channel *channel = server.findChannel(params[2]);
+    if (!validateParams(server, client, params, 3))
+        return;
+    Channel *channel = server.findChannel(params[1]);
     if (channel == 0)
     {
-        sendNumeric(client, "403", server.getName(), params[2] + " :No such channel");
+        sendNumeric(client, "403", server.getName(), params[1] + " :No such channel");
         return;
     }
     if (!channel->isOperator(client.getFd()))
     {
         //change error message
-        sendNumeric(client, "403", server.getName(), params[2] + " :not an operator");
+        sendNumeric(client, "403", server.getName(), params[1] + " :not an operator");
         return ;
     }
     parseModes(server, client, channel, params);

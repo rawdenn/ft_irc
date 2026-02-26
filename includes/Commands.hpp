@@ -15,7 +15,6 @@ public:
     ~Commands();
     void execute(Server &server, Client &client, std::string &cmd);
 
-    void sendNumeric(Client &client, const std::string &numeric, const std::string &server_name, const std::string &message);
     void sendWelcome(Server &server, Client &client);
     void handlePass(Server &server, Client &client, const std::vector<std::string> &params);
     void handleNick(Server &server, Client &client, const std::vector<std::string> &params);
@@ -30,5 +29,6 @@ public:
     void handleMode(Server &server, Client &client, const std::vector<std::string> &params);
     void parseModes(Server &server, Client &client, Channel *channel, const std::vector<std::string> &params);
 };
+void sendNumeric(Client &client, const std::string &numeric, const std::string &server_name, const std::string &message);
 
 #endif

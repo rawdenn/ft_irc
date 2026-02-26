@@ -1,6 +1,6 @@
 #include "../includes/Commands.hpp"
 
-void Commands::sendNumeric(Client &client, const std::string &numeric, const std::string &server_name, const std::string &message)
+void sendNumeric(Client &client, const std::string &numeric, const std::string &server_name, const std::string &message)
 {
     std::string fullMsg = ":" + server_name + " " + numeric + " " + client.getNickname() + " " + message + "\r\n";
     send(client.getFd(), fullMsg.c_str(), fullMsg.size(), 0);
