@@ -21,12 +21,11 @@ private:
     bool registered;
     bool passAccepted;
     bool welcomeSent;
+    bool sentPass;
+    bool sentNick;
+    bool sentUser;
 
 public:
-    // need to change later
-    bool hasSentPass;
-    bool hasSentNick;
-    bool hasSentUser;
     Client(int fd);
     ~Client();
 
@@ -34,6 +33,9 @@ public:
     bool isRegistered() const;
     bool isPassAccepted() const;
     bool isWelcomeSent() const;
+    bool hasSentPass() const;
+    bool hasSentNick() const;
+    bool hasSentUser() const;
 
     const std::string &getNickname() const;
     const std::string &getUsername() const;
@@ -46,7 +48,9 @@ public:
     void setPassAccepted(bool val);
     void setRegistered(bool val);
     void setWelcomeSent(bool val);
-
+    void setHasSentPass(bool val);
+    void setHasSentNick(bool val);
+    void setHasSentUser(bool val);
     void appendBuffer(const std::string &data);
     bool hasCompleteCommand() const;
     std::string extractCommand();

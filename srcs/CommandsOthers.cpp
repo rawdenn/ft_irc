@@ -1,5 +1,6 @@
 #include "../includes/Commands.hpp"
 
+// need to check later
 void Commands::handleQuit(Server &server, Client &client, const std::vector<std::string> &params)
 {
     (void)params;
@@ -10,7 +11,8 @@ void Commands::handleQuit(Server &server, Client &client, const std::vector<std:
         {
             if (it->second.isOperator(client.getFd()))
                 it->second.removeOperator(client.getFd());
-            it->second.broadcastExcept(client.getFd(), client.getNickname() + " has quit the server\n"); // ADD WHAT CHANNEL THIS IS IN
+            std::string quitMsg = ":" + client.getNickname() + "!" + client.getUsername() + "@" + server.getName() + " QUIT\r\n";
+            it->second.broadcastExcept(client.getFd(), quitMsg);
             it->second.removeMember(client.getFd());
         }
     }
@@ -43,8 +45,8 @@ static bool sendToChannel(Server &server, Client &client, std::string message, s
         return false;
     }
     std::string fullMsg = ":" + client.getPrefix() + " PRIVMSG " + target + " :" + message + "\r\n";
-    channel->broadcastExcept(client.getFd(), fullMsg);
-    return true ;
+    channel->broadcast(fullMsg);
+    return true;
 }
 
 static bool sendMsgToClient(Server &server, Client &client, std::string message, std::string target)
@@ -57,14 +59,14 @@ static bool sendMsgToClient(Server &server, Client &client, std::string message,
     }
     std::string fullMsg = ":" + client.getPrefix() + " PRIVMSG " + recipient->getNickname() + " :" + message + "\r\n";
     send(recipient->getFd(), fullMsg.c_str(), fullMsg.size(), 0);
-    return true ;
+    return true;
 }
 
 void Commands::handlePrivmsg(Server &server,
                              Client &client,
                              const std::vector<std::string> &params)
 {
-    if (!checkRegistered(server, client) || validateParams(server, client, params, 3))
+    if (!checkRegistered(server, client) || validateParams(server, client, params, 3, "PRIVMSG"))
         return;
 
     std::string message = concatinate_params(params, 2);
@@ -78,15 +80,15 @@ void Commands::handlePrivmsg(Server &server,
     if (target[0] == '#')
     {
         if (!sendToChannel(server, client, message, target))
-            return ;
+            return;
     }
     else if (!sendMsgToClient(server, client, message, target))
-        return ;
+        return;
 }
 
 void Commands::handlePart(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (!validateParams(server, client, params, 2))
+    if (!checkRegistered(server, client) || !validateParams(server, client, params, 2, "PART"))
         return;
 
     Channel *channel = server.findChannel(params[1]);
@@ -95,17 +97,23 @@ void Commands::handlePart(Server &server, Client &client, const std::vector<std:
         sendNumeric(client, "403", server.getName(), params[1] + " :No such channel");
         return;
     }
+    if (!channel->hasMember(client.getFd()))
+    {
+        sendNumeric(client, "442", server.getName(), params[1] + " :You're not on that channel");
+        return;
+    }
 
-    channel->removeOperator(client.getFd());
-    std::string fullMsg = ":" + client.getNickname() + " left " + channel->getName() + "\r\n";
-    channel->broadcastExcept(client.getFd(), fullMsg);
+    std::string msg = ":" + client.getNickname() + "!" + client.getUsername() + "@" + server.getName() + " PART " + params[1] + "\r\n";
+    channel->broadcast(msg);
     channel->removeMember(client.getFd());
     channel->decrementUserNumber();
+    if (channel->isEmpty())
+        server.deleteChannel(params[1]);
 }
 
 void Commands::handleTopic(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (!validateParams(server, client, params, 2))
+    if (!checkRegistered(server, client) || !validateParams(server, client, params, 2, "TOPIC"))
         return;
 
     if (params[1].c_str()[0] != '#')
@@ -125,37 +133,45 @@ void Commands::handleTopic(Server &server, Client &client, const std::vector<std
         sendNumeric(client, "442", server.getName(), params[1] + " :You're not on that channel");
         return;
     }
+
     if (params.size() == 2)
     {
-        std::string message = ":" + client.getNickname() + "!" + server.getName() + " :" + channel->getTopic() + "\n";
-        send(client.getFd(), message.c_str(), message.size(), 0);
+        if (channel->getTopic().empty())
+            sendNumeric(client, "331", server.getName(), params[1] + " :No topic is set");
+        else
+            sendNumeric(client, "332", server.getName(), params[1] + " :" + channel->getTopic());
+        return;
     }
-    else
+
+    if (channel->getIsTopicRestricted() && !channel->isOperator(client.getFd()))
     {
-        // check if input starts with a :
-        if (channel->getIsTopicRestricted() && !channel->isOperator(client.getFd()))
-        {
-            sendNumeric(client, "482", server.getName(), channel->getName() + " :You're not an operator");
-        }
-        if (params[2].size() > 0)
-        {
-            std::string topic = concatinate_params(params, 2);
-            if (topic[0] != ':')
-            {
-                //change error code
-                sendNumeric(client, "numeric", server.getName(), channel->getName() + " :bad topic it doesnt start with :");
-                return ;
-            }
+        sendNumeric(client, "482", server.getName(), channel->getName() + " :You're not channel operator");
+        return;
+    }
+    if (params[2].size() > 0)
+    {
+        std::string topic = concatinate_params(params, 2);
+        // this is not an error
+        // if (topic[0] != ':')
+        // {
+        //     //change error code
+        //     sendNumeric(client, "numeric", server.getName(), channel->getName() + " :bad topic it doesnt start with :");
+        //     return ;
+        // }
+        if (!topic.empty() && topic[0] == ':')
             topic = topic.substr(1);
-            channel->setTopic(topic);
-        }
+        channel->setTopic(topic);
+
+        // broadcast to channel
+        std::string msg = ":" + client.getNickname() + " TOPIC " + params[1] + " :" + topic + "\r\n";
+        channel->broadcast(msg);
     }
 }
 
 // KICK #channel nickname :optional reason
 void Commands::handleKick(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (!validateParams(server, client, params, 3))
+    if (!checkRegistered(server, client) || !validateParams(server, client, params, 3, "KICK"))
         return;
 
     Channel *channel = server.findChannel(params[1]);
@@ -164,60 +180,72 @@ void Commands::handleKick(Server &server, Client &client, const std::vector<std:
         sendNumeric(client, "403", server.getName(), params[1] + " :No such channel");
         return;
     }
+    if (!channel->hasMember(client.getFd()))
+    {
+        sendNumeric(client, "442", server.getName(), params[1] + " :You're not on that channel");
+        return;
+    }
     Client *possibleMember = channel->getMemberFromNickname(params[2]);
     if (possibleMember == NULL)
     {
         sendNumeric(client, "441", server.getName(), params[2] + " " + params[1] + " :They aren't on that channel");
         return;
     }
-    // check if param[2] is a member of server then check if memeber of channel
-    if (channel->isOperator(client.getFd()))
-    {
-        std::string kickMessage = "";
-        if (params.size() > 3)
-        {
-            kickMessage += concatinate_params(params, 3);
-        }
-        kickMessage += "\r\n";
-        std::string fullMsg = ":" + client.getNickname() + " kicked " + params[2] + " from " + channel->getName() + kickMessage;
-        channel->broadcastExcept(client.getFd(), fullMsg);
-        channel->removeMember(possibleMember->getFd());
-    }
-    else
+    if (!channel->isOperator(client.getFd()))
     {
         sendNumeric(client, "482", server.getName(), params[1] + " :You're not an operator");
         return;
     }
+
+    std::string kickMessage = "";
+    if (params.size() > 3)
+    {
+        kickMessage += concatinate_params(params, 3);
+    }
+    kickMessage += "\r\n";
+    std::string fullMsg = ":" + client.getNickname() + " kicked " + params[2] + " from " + channel->getName() + kickMessage;
+    channel->broadcast(fullMsg);
+    channel->removeMember(possibleMember->getFd());
 }
 
 // example: INVITE nickname #channel
 void Commands::handleInvite(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (!validateParams(server, client, params, 3))
+    if (!checkRegistered(server, client) || !validateParams(server, client, params, 3, "INVITE"))
         return;
 
-    Channel *channel = server.findChannel(params[2]);
+    const std::string &nick = params[1];
+    const std::string &chanName = params[2];
+    Channel *channel = server.findChannel(chanName);
     if (channel == 0)
     {
-        sendNumeric(client, "403", server.getName(), params[2] + " :No such channel");
+        sendNumeric(client, "403", server.getName(), chanName + " :No such channel");
         return;
     }
     Client *possibleMember = server.getClientFromNickname(params[1]);
     if (possibleMember == NULL)
     {
-        sendNumeric(client, "401", server.getName(), params[1] + " :No such nick");
+        sendNumeric(client, "401", server.getName(), nick + " :No such nick");
         return;
     }
-    if (channel->getIsInviteOnly())
+    if (!channel->hasMember(client.getFd()))
     {
-        if (!channel->isOperator(client.getFd()))
-        {
-            sendNumeric(client, "473", server.getName(), params[1] + " :not operator cannot invote Cannot join channel (+i)");
-            //delete possible member?
-            return;
-        }
+        sendNumeric(client, "442", server.getName(), chanName + " :You're not on that channel");
+        return;
     }
-    // should we broadcast a message here?
+    if (channel->getIsInviteOnly() && !channel->isOperator(client.getFd()))
+    {
+        sendNumeric(client, "482", server.getName(), chanName + " :You're not channel operator");
+        return;
+    }
+    if (channel->hasMember(possibleMember->getFd()))
+    {
+        sendNumeric(client, "443", server.getName(), nick + " " + chanName + " :is already on channel");
+        return;
+    }
     channel->addToInvitedMembersList(possibleMember->getFd());
-    // channel->addMember(possibleMember);
+
+    sendNumeric(client, "341", server.getName(), nick + " " + chanName);
+    std::string msg = ":" + client.getNickname() + " INVITE " + nick + " " + chanName + "\r\n";
+    send(possibleMember->getFd(), msg.c_str(), msg.size(), 0);
 }

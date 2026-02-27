@@ -1,6 +1,5 @@
 #include "../includes/Commands.hpp"
 
-
 // i: Set/remove Invite-only channel : WORKS
 // t: Set/remove the restrictions of the TOPIC command to channel operators : WORKS
 // k: Set/remove the channel key (password) : WORKS
@@ -151,18 +150,23 @@ void parseModes(Server &server, Client &client, Channel *channel, const std::vec
 
 void Commands::handleMode(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (!validateParams(server, client, params, 3))
+    if (!checkRegistered(server, client) || !validateParams(server, client, params, 3, "MODE"))
         return;
+
     Channel *channel = server.findChannel(params[1]);
     if (channel == 0)
     {
         sendNumeric(client, "403", server.getName(), params[1] + " :No such channel");
         return;
     }
+    if (!channel->hasMember(client.getFd()))
+    {
+        sendNumeric(client, "442", server.getName(), params[1] + " :You're not on that channel");
+        return;
+    }
     if (!channel->isOperator(client.getFd()))
     {
-        //change error message
-        sendNumeric(client, "numeric", server.getName(), params[1] + " :not an operator");
+        sendNumeric(client, "482", server.getName(), params[1] + " :not an operator");
         return ;
     }
     parseModes(server, client, channel, params);

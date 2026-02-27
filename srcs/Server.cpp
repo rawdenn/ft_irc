@@ -98,10 +98,7 @@ void Server::run()
             if (pollFds[i].revents & POLLIN)
             {
                 if (pollFds[i].fd == serverFd)
-                {
                     acceptClient();
-                    // std::cout<<"in accept client message"<<std::endl;
-                }
                 else
                 {
                     // needs more handling later
@@ -126,17 +123,17 @@ void Server::shutdown()
     channels.clear();
 }
 
-std::string Server::getCreationDate() const
-{
-	char buffer[128];
-	std::time_t creationTime = std::time(NULL);
-	std::tm *timeinfo = std::localtime(&creationTime);
+// std::string Server::getCreationDate() const
+// {
+// 	char buffer[128];
+// 	std::time_t creationTime = std::time(NULL);
+// 	std::tm *timeinfo = std::localtime(&creationTime);
 
-	std::strftime(buffer, sizeof(buffer),
-					"%a %b %d %H:%M:%S %Y", timeinfo);
+// 	std::strftime(buffer, sizeof(buffer),
+// 					"%a %b %d %H:%M:%S %Y", timeinfo);
 
-	return std::string(buffer);
-}
+// 	return std::string(buffer);
+// }
 
 std::string Server::getPassword() const
 {
@@ -168,6 +165,7 @@ void Server::acceptClient()
 	clients.insert(std::make_pair(client_fd, Client(client_fd)));
 	std::cout << "New client connected: " << client_fd << std::endl;
 }
+
 void Server::removeClient(int fd)
 {
 	std::map<int, Client>::iterator it = clients.find(fd);
@@ -180,12 +178,13 @@ void Server::removeClient(int fd)
 	for (std::map<std::string, Channel>::iterator ch = channels.begin();
 			ch != channels.end();)
 	{
-		ch->second.removeMember(client);
+		ch->second.removeMember(client->getFd());
 
 		if (ch->second.getMembers().empty())
 		{
 			std::map<std::string, Channel>::iterator toDelete = ch;
 			++ch;
+			std::cout << "Channel deleted: " << toDelete->second.getName() << std::endl;
 			channels.erase(toDelete);
 		}
 		else
@@ -293,4 +292,14 @@ Channel* Server::createChannel(const std::string &name, Client &creator)
 	std::cout << "Channel created: " << name << " by " << creator.getNickname() << std::endl;
 
 	return &chan;
+}
+
+void Server::deleteChannel(const std::string &name)
+{
+	std::map<std::string, Channel>::iterator it = channels.find(name);
+	if (it != channels.end())
+	{
+		std::cout << "Channel deleted: " << name << std::endl;
+		channels.erase(it);
+	}
 }

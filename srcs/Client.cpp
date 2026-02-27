@@ -10,28 +10,13 @@ Client::Client(int fd)
     this->registered = false;
     this->passAccepted = false;
     this->welcomeSent = false;
-    this->hasSentPass = false;
-    this->hasSentNick = false;
-    this->hasSentUser = false;
+    this->sentPass = false;
+    this->sentNick = false;
+    this->sentUser = false;
 }
-
-// Client::Client(int fd, const std::string &nick, const std::string &user, const std::string &real)
-// {
-//     this->fd = fd;
-//     this->nickname = nick;
-//     this->username = user;
-//     this->realname = real;
-//     this->buffer = "";
-//     this->registered = false;
-//     this->passAccepted = false;
-//     this->hasSentPass = false;
-//     this->hasSentNick = true;
-//     this->hasSentUser = true;
-// }
 
 Client::~Client()
-{
-}
+{}
 
 int Client::getFd() const
 {
@@ -40,7 +25,7 @@ int Client::getFd() const
 
 bool Client::isRegistered() const
 {
-    return (hasSentNick && hasSentUser && hasSentPass) || this->registered;
+    return (hasSentNick() && hasSentUser() && hasSentPass()) || this->registered;
 }
 
 bool Client::isPassAccepted() const
@@ -51,6 +36,21 @@ bool Client::isPassAccepted() const
 bool Client::isWelcomeSent() const
 {
     return this->welcomeSent;
+}
+
+bool Client::hasSentPass() const
+{
+    return this->sentPass;
+}
+
+bool Client::hasSentNick() const
+{
+    return this->sentNick;
+}
+
+bool Client::hasSentUser() const
+{
+    return this->sentUser;
 }
 
 const std::string &Client::getNickname() const
@@ -95,6 +95,21 @@ void Client::setWelcomeSent(bool val)
 void Client::setRegistered(bool val)
 {
     this->registered = val;
+}
+
+void Client::setHasSentPass(bool val)
+{
+    this->sentPass = val;
+}
+
+void Client::setHasSentNick(bool val)
+{
+    this->sentNick = val;
+}
+
+void Client::setHasSentUser(bool val)
+{
+    this->sentUser = val;
 }
 
 void Client::appendBuffer(const std::string &data)

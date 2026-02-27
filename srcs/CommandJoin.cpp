@@ -1,6 +1,5 @@
 #include "../includes/Commands.hpp"
 
-
 static bool isValidChannelName(const std::string &name)
 {
     if (name.empty() || name[0] != '#')
@@ -25,11 +24,11 @@ bool checkRegistered(Server &server, Client &client)
     return true;
 }
 
-bool validateParams(Server &server, Client &client, const std::vector<std::string> &params, size_t params_num)
+bool validateParams(Server &server, Client &client, const std::vector<std::string> &params, size_t params_num, const std::string &cmd)
 {
     if (params.size() < params_num)
     {
-        sendNumeric(client, "461", server.getName(), "JOIN :Not enough parameters");
+        sendNumeric(client, "461", server.getName(), cmd + " :Not enough parameters");
         return false;
     }
     return true;
@@ -42,24 +41,17 @@ static bool ValidateChannelName(std::string chanName, Server &server, Client &cl
         sendNumeric(client, "476", server.getName(), client.getNickname() + " " + chanName + " :Bad Channel Mask");
         return false;
     }
-    return true ;
-
+    return true;
 }
 
 static bool validateKey(Server &server, Client &client, const std::vector<std::string> &params, Channel *channel)
 {
     if (channel->getHasKey())
     {
-        if (params.size() <= 2)
+        // missing key or wrong key
+        if (params.size() <= 2 || channel->getKey() != params[2])
         {
-            //change error message
-            sendNumeric(client, "numeric", server.getName(), client.getNickname() + " " + channel->getName() + " :MISSING PASS!!");
-            return false;
-        }
-        if (params.size() > 2 && channel->getKey() != params[2])
-        {
-            //change error message
-            sendNumeric(client, "numeric", server.getName(), client.getNickname() + " " + channel->getName() + " :WRONG PASS!!");
+            sendNumeric(client, "475", server.getName(), channel->getName() + " :Cannot join channel (+k)");
             return false;
         }
     }
@@ -70,34 +62,36 @@ static bool canJoinChannel(Server &server, Client &client, Channel *channel)
 {
     if (channel->hasMember(client.getFd()))
     {
-        sendNumeric(client, "443", server.getName(), client.getNickname() + " " + channel->getName() + " :is already on channel");
+        sendNumeric(client, "443", server.getName(), channel->getName() + " :is already on channel");
         return false;
     }
     if (channel->getIsInviteOnly() && !channel->isinvited(client.getFd()))
     {
-        //change error message to correct format
-        sendNumeric(client, "numeric", server.getName(), client.getNickname() + " " + channel->getName() + " :cannot join channel, not invited and channel is invite only");
+        sendNumeric(client, "473", server.getName(), channel->getName() + " :Cannot join channel (+i)");
         return false;
     }
-    if (channel->getUserNumber() == channel->getUserLimit())
+
+    // better to make it always positive when setting user limit
+    // for example if i set +l to 0 or less, it should store it as 1
+    if (channel->getUserLimit() > 0 &&
+        channel->getUserNumber() >= channel->getUserLimit())
     {
+        // for testing
         std::cout << "user number " << channel->getUserNumber() << "user limit: " << channel->getUserLimit() << std::endl;
-        //change error message to correct format
-        sendNumeric(client, "numeric", server.getName(), client.getNickname() + " " + channel->getName() + " :cannot join channel, channel is full");
+        sendNumeric(client, "471", server.getName(), channel->getName() + " :Cannot join channel (+l)");
         return false;
     }
-    return (true);
+    return true;
 }
 
 void Commands::handleJoin(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (!checkRegistered(server, client)
-        || !validateParams(server, client, params, 2))
+    if (!checkRegistered(server, client) || !validateParams(server, client, params, 2, "JOIN"))
         return;
 
     std::string chanName = params[1];
     if (!ValidateChannelName(chanName, server, client))
-        return ;
+        return;
 
     Channel *channel = server.findChannel(chanName);
 
@@ -105,9 +99,8 @@ void Commands::handleJoin(Server &server, Client &client, const std::vector<std:
         channel = server.createChannel(chanName, client);
     else
     {
-        if (!validateKey(server, client, params, channel)
-            || !canJoinChannel(server, client, channel))
-            return ;
+        if (!validateKey(server, client, params, channel) || !canJoinChannel(server, client, channel))
+            return;
         channel->addMember(&client);
         channel->incrementUserNumber();
         channel->removeFromInvitedMembersList(client.getFd());

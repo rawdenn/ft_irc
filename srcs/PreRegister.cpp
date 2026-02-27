@@ -8,15 +8,15 @@ void sendNumeric(Client &client, const std::string &numeric, const std::string &
 
 void Commands::sendWelcome(Server &server, Client &client)
 {
-    sendNumeric(client, "001", server.getName(), "Welcome to the IRC Network " + client.getNickname());
-    sendNumeric(client, "002", server.getName(), "Your host is " + server.getName());
-    sendNumeric(client, "003", server.getName(), "This server was created " + server.getCreationDate());
-    sendNumeric(client, "004", server.getName(), "... server info ..."); // add more info here
+    sendNumeric(client, "001", server.getName(), ":Welcome to the IRC Network " + client.getNickname());
+    sendNumeric(client, "002", server.getName(), ":Your host is " + server.getName());
+    sendNumeric(client, "003", server.getName(), ":This server was created today");
+    sendNumeric(client, "004", server.getName(), server.getName() + " 1.0 o itkol");
 }
 
 void Commands::handlePass(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (client.hasSentPass)
+    if (client.hasSentPass())
     {
         sendNumeric(client, "462", server.getName(), "You may not reregister");
         return;
@@ -35,7 +35,7 @@ void Commands::handlePass(Server &server, Client &client, const std::vector<std:
         return;
     }
 
-    client.hasSentPass = true;
+    client.setHasSentPass(true);
     if (client.isRegistered() && !client.isWelcomeSent())
     {
         sendWelcome(server, client);
@@ -43,11 +43,6 @@ void Commands::handlePass(Server &server, Client &client, const std::vector<std:
     }
 }
 
-// These should not pass
-// NICK 123rawan
-// NICK @rawan
-// NICK rawan!
-// NICK rawan rawan
 bool isValidNick(const std::string &nick)
 {
     if (nick.empty())
@@ -85,7 +80,7 @@ void Commands::handleNick(Server &server, Client &client, const std::vector<std:
     }
 
     client.setNickname(nickname);
-    client.hasSentNick = true;
+    client.setHasSentNick(true);
 
     if (client.isRegistered() && !client.isWelcomeSent())
     {
@@ -96,7 +91,7 @@ void Commands::handleNick(Server &server, Client &client, const std::vector<std:
 
 void Commands::handleUser(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (client.hasSentUser)
+    if (client.hasSentUser())
     {
         sendNumeric(client, "462", server.getName(), "You may not reregister");
         return;
@@ -121,7 +116,7 @@ void Commands::handleUser(Server &server, Client &client, const std::vector<std:
 
     client.setUsername(params[1]);
     client.setRealname(realname);
-    client.hasSentUser = true;
+    client.setHasSentUser(true);
 
     if (client.isRegistered() && !client.isWelcomeSent())
     {

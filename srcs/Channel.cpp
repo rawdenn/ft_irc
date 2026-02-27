@@ -8,7 +8,7 @@ Channel::Channel()
     this->userLimit = -1;
     this->userNumber = 0;
     this->isInviteOnly = false;
-    this->isTopicRestricted = true;
+    this->isTopicRestricted = false;
     this->hasKey = false;
 }
 
@@ -20,7 +20,7 @@ Channel::Channel(std::string _name)
     this->userLimit = -1;
     this->userNumber = 0;
     this->isInviteOnly = false;
-    this->isTopicRestricted = true;
+    this->isTopicRestricted = false;
     this->hasKey = false;
 }
 
@@ -98,7 +98,6 @@ void Channel::setIsTopicRestricted(bool val)
     this->isTopicRestricted = val;
 }
 
-
 const bool &Channel::getHasKey() const
 {
     return (this->hasKey);
@@ -139,20 +138,16 @@ std::map<int, Client *> &Channel::getMembers()
     return members;
 }
 
-void Channel::removeMember(Client *client)
-{
-    members.erase(client->getFd());
-    operators.erase(client->getFd());
-}
+// void Channel::removeMember(Client *client)
+// {
+//     members.erase(client->getFd());
+//     operators.erase(client->getFd());
+// }
 
 void Channel::removeMember(int fd)
 {
     operators.erase(fd);
     members.erase(fd);
-    if (members.empty())
-    {
-        // delete channel
-    }
 }
 
 void Channel::addOperator(int fd)
@@ -183,6 +178,7 @@ void Channel::removeFromInvitedMembersList(int fd)
     invitedMembers.erase(fd);
 }
 
+// sends to all including sender
 void Channel::broadcast(const std::string &message)
 {
     for (std::map<int, Client *>::iterator it = members.begin();
@@ -192,6 +188,7 @@ void Channel::broadcast(const std::string &message)
     }
 }
 
+// sends to all except sender
 void Channel::broadcastExcept(int senderFd, const std::string &message)
 {
     for (std::map<int, Client *>::iterator it = members.begin();
