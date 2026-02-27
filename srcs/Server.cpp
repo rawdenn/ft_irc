@@ -100,11 +100,7 @@ void Server::run()
                 if (pollFds[i].fd == serverFd)
                     acceptClient();
                 else
-                {
-                    // needs more handling later
-                    // std::cout<<"in handle client message"<<std::endl;
                     handleClientMessage(pollFds[i].fd);
-                }
             }
         }
     }

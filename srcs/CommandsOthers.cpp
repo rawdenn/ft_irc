@@ -45,7 +45,7 @@ static bool sendToChannel(Server &server, Client &client, std::string message, s
         return false;
     }
     std::string fullMsg = ":" + client.getPrefix() + " PRIVMSG " + target + " :" + message + "\r\n";
-    channel->broadcast(fullMsg);
+    channel->broadcastExcept(client.getFd(), fullMsg);
     return true;
 }
 
@@ -62,17 +62,15 @@ static bool sendMsgToClient(Server &server, Client &client, std::string message,
     return true;
 }
 
-void Commands::handlePrivmsg(Server &server,
-                             Client &client,
-                             const std::vector<std::string> &params)
+void Commands::handlePrivmsg(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    if (!checkRegistered(server, client) || validateParams(server, client, params, 3, "PRIVMSG"))
+    if (!checkRegistered(server, client) || !validateParams(server, client, params, 3, "PRIVMSG"))
         return;
 
     std::string message = concatinate_params(params, 2);
     if (message.empty())
     {
-        sendNumeric(client, "412", server.getName(), ":No text to send");
+        sendNumeric(client, "412", server.getName(), "PRIVMSG :No text to send");
         return;
     }
 
