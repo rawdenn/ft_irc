@@ -27,7 +27,6 @@ public:
     void handleKick(Server &server, Client &client, const std::vector<std::string> &params);
     void handleInvite(Server &server, Client &client, const std::vector<std::string> &params);
     void handleMode(Server &server, Client &client, const std::vector<std::string> &params);
-    void parseModes(Server &server, Client &client, Channel *channel, const std::vector<std::string> &params);
 };
 void    sendNumeric(Client &client, const std::string &numeric, const std::string &server_name, const std::string &message);
 bool    validateParams(Server &server, Client &client, const std::vector<std::string> &params, size_t params_num);

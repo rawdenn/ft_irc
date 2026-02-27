@@ -14,14 +14,33 @@ void parseModesUserLimit(Channel *channel, const std::vector<std::string> &param
         channel->setUserLimit(-1);
         return ;
     }
-    int userLimit = atoi(params[*params_index].c_str());
+    int userLimit = atoi(params[*params_index].c_str()); //double check if num valid
     channel->setUserLimit(userLimit);
     (*params_index)++;
     std::cout << "Mode " << sign << "l (user limit)\n";
 }
 
-void parseModesOperator(Client *potentialMember, Channel *channel, size_t *params_index, bool sign)
+static bool checkModeParam(Server &server, Client &client, const std::vector<std::string> &params, size_t params_index)
 {
+    if (params_index >= params.size())
+    {
+        sendNumeric(client, "461", server.getName(), " :MODE:Not enough parameters");
+        return false;
+    }
+    return true;
+}
+
+static void handleModesOperator(Channel *channel, size_t *params_index, bool sign,
+    const std::vector<std::string> &params, Server &server, Client &client)
+{
+    if (!checkModeParam(server, client, params, *params_index))
+        return ;
+    Client *potentialMember = server.getClientFromNickname(params[*params_index]);
+    if (!potentialMember)
+    {
+        sendNumeric(client, "401", server.getName(), " :No such nick");
+        return ;
+    }
     if (channel->hasMember(potentialMember->getFd()))
     {
         if (sign)
@@ -49,7 +68,65 @@ static void parseModesKey(Channel *channel, const std::vector<std::string> &para
     std::cout << "Mode " << sign << "k (channel key)\n";
 }
 
-void Commands::parseModes(Server &server, Client &client, Channel *channel, const std::vector<std::string> &params)
+static bool parseSign(bool &sign, char c)
+{
+    if (c == '+')
+    {
+        sign = true;
+        return true;
+    }
+    if (c == '-')
+    {
+        sign = false;
+        return true;
+    }
+    return (false);
+}
+
+static void parseModeNoParams(char mode, bool sign, Channel *channel)
+{
+    switch (mode)
+    {
+        case 'i':
+            channel->setIsInviteOnly(sign);
+            break;
+        case 't':
+            channel->setIsTopicRestricted(sign);
+            break;
+        default:
+        // Invalid mode character
+        std::cout << "ERR_UNKNOWNMODE: '" << mode << "' is unknown mode char\n";
+        break;
+    }
+}
+
+static void parseModeParams(char mode, bool sign, Channel *channel, Server &server,
+        Client &client, const std::vector<std::string> &params, size_t &params_index)
+{
+    switch (mode)
+    {
+        case 'k':
+            parseModesKey(channel, params, &params_index, sign);
+            break;
+        case 'o':
+        {
+            handleModesOperator(channel, &params_index, sign, params, server, client);
+            break;
+        }
+        case 'l':
+        
+            if (!checkModeParam(server, client, params, params_index))
+                break ;
+            parseModesUserLimit(channel, params, &params_index, sign);
+            break;
+        default:
+            // Invalid mode character
+            std::cout << "ERR_UNKNOWNMODE: '" << mode << "' is unknown mode char\n";
+            break;
+    }
+}
+
+void parseModes(Server &server, Client &client, Channel *channel, const std::vector<std::string> &params)
 {
     bool        sign = false;
     char        c;
@@ -59,62 +136,16 @@ void Commands::parseModes(Server &server, Client &client, Channel *channel, cons
     for (size_t i = 0; i < modes.length(); i++)
     {
         c = modes[i];
-        if (c == '+' || c == '-')
-        {
-            if (c == '+')
-                sign = true;
-            else
-                sign = false;
+        if (parseSign(sign, c))
             continue ;
-        }
-        switch (c)
+        if (c == 'i' || c == 't')
         {
-            case 'i':
-            {
-                channel->setIsInviteOnly(sign);
-                break;
-            }
-            case 't':
-            {
-                channel->setIsTopicRestricted(sign);
-                break;
-            }
-            case 'k':
-            {
-                parseModesKey(channel, params, &params_index, sign);
-                break;
-            }
-            case 'o':
-            {
-                if (params_index >= params.size())
-                {
-                    sendNumeric(client, "461", server.getName(), " :MODE:Not enough parameters");
-                    break ;
-                }
-                Client *potentialMember = server.getClientFromNickname(params[params_index]);
-                if (!potentialMember)
-                {
-                    sendNumeric(client, "401", server.getName(), " :No such nick");
-                    break ;
-                }
-                parseModesOperator(potentialMember, channel, &params_index, sign);
-                break;
-            }
-            case 'l':
-            {
-                if (params_index >= params.size())
-                {
-                    sendNumeric(client, "461", server.getName(), " :MODE:Not enough parameters");
-                    break ;
-                }
-                parseModesUserLimit(channel, params, &params_index, sign);
-                break;
-            }
-            default:
-                // Invalid mode character
-                std::cout << "ERR_UNKNOWNMODE: '" << c << "' is unknown mode char\n";
-                break;
+            parseModeNoParams(c, sign, channel);
         }
+        else if (c == 'o' || c == 'l' || c == 'k')
+            parseModeParams(c, sign, channel, server, client, params, params_index);
+        else
+        std::cout << "ERR_UNKNOWNMODE: '" << c << "' is unknown mode char\n"; // Invalid mode character
     }
 }
 
@@ -131,7 +162,7 @@ void Commands::handleMode(Server &server, Client &client, const std::vector<std:
     if (!channel->isOperator(client.getFd()))
     {
         //change error message
-        sendNumeric(client, "403", server.getName(), params[1] + " :not an operator");
+        sendNumeric(client, "numeric", server.getName(), params[1] + " :not an operator");
         return ;
     }
     parseModes(server, client, channel, params);
