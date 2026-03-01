@@ -110,11 +110,11 @@ void Commands::handleJoin(Server &server, Client &client, const std::vector<std:
     channel->broadcast(joinMsg);
 
     if (!channel->getTopic().empty())
-        sendNumeric(client, "332", server.getName(), client.getNickname() + " " + chanName + " :" + channel->getTopic());
+        sendNumeric(client, "332", server.getName(),  chanName + " :" + channel->getTopic());
     else
-        sendNumeric(client, "331", server.getName(), client.getNickname() + " " + chanName + " :No topic is set");
+        sendNumeric(client, "331", server.getName(), chanName + " :No topic is set");
 
     std::string names = channel->getNamesList();
-    sendNumeric(client, "353", server.getName(), client.getNickname() + " = " + chanName + " :" + names);
-    sendNumeric(client, "366", server.getName(), client.getNickname() + " " + chanName + " :End of /NAMES list");
+    sendNumeric(client, "353", server.getName(),  " = " + chanName + " :" + names);
+    sendNumeric(client, "366", server.getName(), chanName + " :End of /NAMES list");
 }

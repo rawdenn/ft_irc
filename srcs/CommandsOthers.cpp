@@ -195,13 +195,16 @@ void Commands::handleKick(Server &server, Client &client, const std::vector<std:
         return;
     }
 
-    std::string kickMessage = "";
+    std::string kickMessage = " ";
     if (params.size() > 3)
     {
+        kickMessage += " :";
         kickMessage += concatinate_params(params, 3);
     }
     kickMessage += "\r\n";
-    std::string fullMsg = ":" + client.getNickname() + " kicked " + params[2] + " from " + channel->getName() + kickMessage;
+    std::string fullMsg = ":" + client.getNickname() + "!" +
+                            client.getUsername() + "@localhost " +
+                            "KICK " + channel->getName() + " " + params[2] + kickMessage;
     channel->broadcast(fullMsg);
     channel->removeMember(possibleMember->getFd());
 }

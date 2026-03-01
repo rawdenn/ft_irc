@@ -6,22 +6,31 @@
 // o: Give/take channel operator privilege : WORKS
 // l: Set/remove the user limit to channel : WORKS
 
-void parseModesUserLimit(Channel *channel, const std::vector<std::string> &params, size_t *params_index, bool sign)
+void parseModesUserLimit(Client &client, Channel *channel, Server &server, const std::vector<std::string> &params, size_t *params_index, bool sign)
 {
     if (!sign)
     {
+        sendNumeric(client, "324", server.getName(), "-l");
         channel->setUserLimit(-1);
         return ;
     }
-    int userLimit = atoi(params[*params_index].c_str()); //double check if num valid
+    int userLimit = atoi(params[*params_index].c_str());
+    if (userLimit < 0)
+    {
+        //change error message
+        sendNumeric(client, "461", server.getName(), "MODE :Not enough parameters");
+        return ;
+    }
     channel->setUserLimit(userLimit);
+    std::string modeMsg = "+l ";
+    modeMsg += params[*params_index];
     (*params_index)++;
-    std::cout << "Mode " << sign << "l (user limit)\n";
+    sendNumeric(client, "324", server.getName(), modeMsg);
 }
 
 static bool checkModeParam(Server &server, Client &client, const std::vector<std::string> &params, size_t params_index)
 {
-    if (params_index >= params.size())
+    if (params_index > params.size())
     {
         sendNumeric(client, "461", server.getName(), " :MODE:Not enough parameters");
         return false;
@@ -37,16 +46,30 @@ static void handleModesOperator(Channel *channel, size_t *params_index, bool sig
     Client *potentialMember = server.getClientFromNickname(params[*params_index]);
     if (!potentialMember)
     {
+        //change message
         sendNumeric(client, "401", server.getName(), " :No such nick");
         return ;
     }
-    if (channel->hasMember(potentialMember->getFd()))
+    if (!channel->hasMember(potentialMember->getFd()))
     {
-        if (sign)
-            channel->addOperator(potentialMember->getFd());
-        else
-            channel->removeOperator(potentialMember->getFd());
+        sendNumeric(client, "441", server.getName(), potentialMember->getNickname() + " " + channel->getName() + " :They aren't on that channel");
+        return;
     }
+
+    std::string modeMsg = "";
+    if (sign)
+    {
+        channel->addOperator(potentialMember->getFd());
+        modeMsg = "+o ";
+
+    }
+    else
+    {
+        channel->removeOperator(potentialMember->getFd());
+        modeMsg = "-o ";
+    }
+    modeMsg += potentialMember->getNickname();
+    sendNumeric(client, "324", server.getName(), modeMsg);
     (*params_index)++;
     std::cout << "Mode " << sign << "o (operator)\n";
 }
@@ -88,6 +111,7 @@ static void parseModeNoParams(char mode, bool sign, Channel *channel)
     {
         case 'i':
             channel->setIsInviteOnly(sign);
+            // std::cout<<"set as invite only\n";
             break;
         case 't':
             channel->setIsTopicRestricted(sign);
@@ -116,7 +140,7 @@ static void parseModeParams(char mode, bool sign, Channel *channel, Server &serv
         
             if (!checkModeParam(server, client, params, params_index))
                 break ;
-            parseModesUserLimit(channel, params, &params_index, sign);
+            parseModesUserLimit(client, channel, server, params, &params_index, sign);
             break;
         default:
             // Invalid mode character
