@@ -31,4 +31,6 @@ public:
 void    sendNumeric(Client &client, const std::string &numeric, const std::string &server_name, const std::string &message);
 bool    validateParams(Server &server, Client &client, const std::vector<std::string> &params, size_t params_num, const std::string &cmd);
 bool    checkRegistered(Server &server, Client &client);
+std::string concatinate_params(const std::vector<std::string> &params, int start);
+
 #endif

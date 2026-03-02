@@ -135,11 +135,6 @@ std::string Client::extractCommand()
     if (pos != std::string::npos)
     {
         command = this->buffer.substr(0, pos);
-        // If the line ended with CRLF, remove the trailing '\r'
-        // if (!command.empty() && command[command.size() - 1] == '\r')
-        //     command.erase(command.size() - 1, 1);
-        // // Erase the line including the '\n' (1 char). If it was CRLF, the '\r' was part of command and already removed.
-        // this->buffer.erase(0, pos + 1);
         this->buffer.erase(0, pos + 2);
     }
     std::cout << "command is: " << command << std::endl;

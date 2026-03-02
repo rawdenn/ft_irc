@@ -76,6 +76,8 @@ https://datatracker.ietf.org/doc/html/rfc1459#section-9.2.2
 IRC Documentation - USER Command Reference
 https://dd.ircdocs.horse/refs/commands/user
 
+https://www.ietf.org/rfc/rfc1459.txt
+
 ## AI Usage
 
 - This README was partially generated with AI. AI assistance was used for:

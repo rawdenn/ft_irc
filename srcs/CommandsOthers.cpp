@@ -1,9 +1,13 @@
 #include "../includes/Commands.hpp"
 
-// need to check later
+// QUIT :reason for quitting(optional)
 void Commands::handleQuit(Server &server, Client &client, const std::vector<std::string> &params)
 {
-    (void)params;
+    std::string reason;
+    if (params.size() > 1)
+        reason = concatinate_params(params, 1);
+    else
+        reason = "Client Quit";
     std::map<std::string, Channel>::iterator it;
     for (it = server.getChannels().begin(); it != server.getChannels().end(); it++)
     {
@@ -11,7 +15,7 @@ void Commands::handleQuit(Server &server, Client &client, const std::vector<std:
         {
             if (it->second.isOperator(client.getFd()))
                 it->second.removeOperator(client.getFd());
-            std::string quitMsg = ":" + client.getNickname() + "!" + client.getUsername() + "@" + server.getName() + " QUIT\r\n";
+            std::string quitMsg = ":" + client.getNickname() + "!" + client.getUsername() + "@" + server.getName() + " QUIT :" + reason + "\r\n";
             it->second.broadcastExcept(client.getFd(), quitMsg);
             it->second.removeMember(client.getFd());
         }
@@ -19,7 +23,7 @@ void Commands::handleQuit(Server &server, Client &client, const std::vector<std:
     server.removeClient(client.getFd());
 }
 
-static std::string concatinate_params(const std::vector<std::string> &params, int start)
+std::string concatinate_params(const std::vector<std::string> &params, int start)
 {
     std::string message = "";
     for (size_t i = start; i < params.size(); i++)
@@ -195,16 +199,13 @@ void Commands::handleKick(Server &server, Client &client, const std::vector<std:
         return;
     }
 
-    std::string kickMessage = " ";
+    std::string kickMessage;
     if (params.size() > 3)
     {
-        kickMessage += " :";
-        kickMessage += concatinate_params(params, 3);
+        kickMessage = " :" + concatinate_params(params, 3);
     }
     kickMessage += "\r\n";
-    std::string fullMsg = ":" + client.getNickname() + "!" +
-                            client.getUsername() + "@localhost " +
-                            "KICK " + channel->getName() + " " + params[2] + kickMessage;
+    std::string fullMsg = ":" + client.getPrefix() + " KICK " + channel->getName() + " " + params[2] + kickMessage;
     channel->broadcast(fullMsg);
     channel->removeMember(possibleMember->getFd());
 }
