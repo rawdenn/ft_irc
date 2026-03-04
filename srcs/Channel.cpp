@@ -138,12 +138,6 @@ std::map<int, Client *> &Channel::getMembers()
     return members;
 }
 
-// void Channel::removeMember(Client *client)
-// {
-//     members.erase(client->getFd());
-//     operators.erase(client->getFd());
-// }
-
 void Channel::removeMember(int fd)
 {
     operators.erase(fd);

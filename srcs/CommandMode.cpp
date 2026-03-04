@@ -72,18 +72,30 @@ static void handleModesOperator(Channel *channel, size_t *params_index, bool sig
     std::cout << "Mode " << sign << "o (operator)\n";
 }
 
-static void parseModesKey(Channel *channel, const std::vector<std::string> &params, size_t *params_index, bool sign)
+static void parseModesKey(Channel *channel, Client &client, const std::vector<std::string> &params, size_t *params_index, bool sign)
 {
     if (sign == true)
     {
         if (*params_index < params.size())
         {
             channel->setKey(params[*params_index]);
+            std::string msg = ":" + client.getPrefix()
+                + " MODE " + channel->getName()
+                + " +k " + channel->getKey() + "\r\n";
+            channel->broadcast(msg);
             (*params_index)++;
         }
     }
     else
+    {
+        if (channel->getKey() != "")
+        {
+            std::string msg = ":" + client.getPrefix() 
+                    + " MODE " + channel->getName() + " -k\r\n";            
+            channel->broadcast(msg);
+        }
         channel->setKey("");
+    }
     channel->setHasKey(sign);
     std::cout << "Mode " << sign << "k (channel key)\n";
 }
@@ -118,10 +130,7 @@ static void parseModeNoParams(char mode, bool sign, Channel *channel, Client &cl
         modeStr = sign ? "+t" : "-t";
     }
     else
-    {
-        // do we need to send an error message to user or ignore?
         std::cout << "ERR_UNKNOWNMODE: '" << mode << "' is unknown mode char\n";
-    }
 
     std::string msg = ":" + client.getPrefix() + " MODE " + channel->getName() + " " + modeStr + "\r\n";
     channel->broadcast(msg);
@@ -133,7 +142,7 @@ static void parseModeParams(char mode, bool sign, Channel *channel, Server &serv
     switch (mode)
     {
     case 'k':
-        parseModesKey(channel, params, &params_index, sign);
+        parseModesKey(channel, client, params, &params_index, sign);
         break;
     case 'o':
     {
@@ -141,7 +150,6 @@ static void parseModeParams(char mode, bool sign, Channel *channel, Server &serv
         break;
     }
     case 'l':
-        // -l doesnt need extra params
         if (sign)
         {
             if (!checkModeParam(server, client, params, params_index))

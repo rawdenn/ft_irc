@@ -67,7 +67,7 @@ public:
     void addToInvitedMembersList(int fd);
     void removeFromInvitedMembersList(int fd);
 
-    void broadcast(const std::string &message); // to everyone
+    void broadcast(const std::string &message);
     void broadcastExcept(int senderFd, const std::string &message);
     std::string getNamesList() const;
 
