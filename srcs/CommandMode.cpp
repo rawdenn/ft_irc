@@ -100,16 +100,18 @@ static void parseModesKey(Channel *channel, Client &client, const std::vector<st
     std::cout << "Mode " << sign << "k (channel key)\n";
 }
 
-static bool parseSign(bool &sign, char c)
+static bool parseSign(bool &sign, char c, bool &signSet)
 {
     if (c == '+')
     {
         sign = true;
+        signSet = true;
         return true;
     }
     if (c == '-')
     {
         sign = false;
+        signSet = true;
         return true;
     }
     return (false);
@@ -164,9 +166,11 @@ static void parseModeParams(char mode, bool sign, Channel *channel, Server &serv
     }
 }
 
+
 void parseModes(Server &server, Client &client, Channel *channel, const std::vector<std::string> &params)
 {
     bool sign = false;
+    bool signSet = false;
     char c;
     std::string modes = params[2];
     size_t params_index = 3;
@@ -174,8 +178,14 @@ void parseModes(Server &server, Client &client, Channel *channel, const std::vec
     for (size_t i = 0; i < modes.length(); i++)
     {
         c = modes[i];
-        if (parseSign(sign, c))
-            continue;
+        if (parseSign(sign, c, signSet))
+            continue ;
+        if (!signSet)
+        {
+            std::cout << "ERR_UNKNOWNMODE \n"; //not sure if it should be send or 
+            continue ;
+        }
+
         if (c == 'i' || c == 't')
             parseModeNoParams(c, sign, channel, client);
         else if (c == 'o' || c == 'l' || c == 'k')
