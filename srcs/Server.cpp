@@ -12,7 +12,6 @@ static void set_non_blocking(int fd)
 
 Server::Server(int port, const std::string &password)
 {
-    // check if valid later
     this->password = password;
     this->port = port;
     this->running = false;
@@ -55,7 +54,6 @@ bool Server::isNicknameTaken(const std::string &nick)
 
 void Server::run()
 {
-    // we bind and listen here...
     sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
@@ -75,8 +73,6 @@ void Server::run()
     }
 
     set_non_blocking(serverFd);
-
-    // Add server socket to pollFds
     pollfd server_poll;
     server_poll.fd = serverFd;
     server_poll.events = POLLIN;
@@ -118,18 +114,6 @@ void Server::shutdown()
     clients.clear();
     channels.clear();
 }
-
-// std::string Server::getCreationDate() const
-// {
-// 	char buffer[128];
-// 	std::time_t creationTime = std::time(NULL);
-// 	std::tm *timeinfo = std::localtime(&creationTime);
-
-// 	std::strftime(buffer, sizeof(buffer),
-// 					"%a %b %d %H:%M:%S %Y", timeinfo);
-
-// 	return std::string(buffer);
-// }
 
 std::string Server::getPassword() const
 {
@@ -276,16 +260,13 @@ Channel* Server::createChannel(const std::string &name, Client &creator)
 	result = channels.insert(std::make_pair(name, Channel(name)));
 
 	if (!result.second)
-		return NULL; // insertion failed
+		return NULL;
 
 	Channel &chan = result.first->second;
 
 	chan.addMember(&creator);
 	chan.addOperator(creator.getFd());
 	chan.incrementUserNumber();
-
-	// should delete later, it's just for testing
-	std::cout << "Channel created: " << name << " by " << creator.getNickname() << std::endl;
 
 	return &chan;
 }

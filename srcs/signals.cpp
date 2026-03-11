@@ -1,16 +1,40 @@
 #include "../includes/ft_irc.h"
 
-int	g_running = 1;
+// int	g_running = 1;
 
-static void	ctrl_c(int sig)
+// static void	ctrl_c(int sig)
+// {
+// 	(void)sig;
+// 	g_running = 0;
+// }
+
+// void	main_signal(void)
+// {
+// 	signal(SIGINT, ctrl_c);
+// 	signal(SIGQUIT, SIG_IGN);
+// 	signal(SIGPIPE, SIG_IGN);
+// }
+
+static int &running()
 {
-	(void)sig;
-	g_running = 0;
+    static int value = 1;
+    return value;
 }
 
-void	main_signal(void)
+static void ctrl_c(int sig)
 {
-	signal(SIGINT, ctrl_c);
-	signal(SIGQUIT, SIG_IGN);
-	signal(SIGPIPE, SIG_IGN);
+    (void)sig;
+    running() = 0;
+}
+
+void main_signal(void)
+{
+    signal(SIGINT, ctrl_c);
+    signal(SIGQUIT, SIG_IGN);
+    signal(SIGPIPE, SIG_IGN);
+}
+
+int isRunning()
+{
+    return running();
 }

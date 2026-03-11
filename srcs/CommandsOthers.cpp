@@ -48,7 +48,7 @@ static bool sendToChannel(Server &server, Client &client, std::string message, s
         sendNumeric(client, "442", server.getName(), target + " :You're not on that channel");
         return false;
     }
-    std::string fullMsg = ":" + client.getPrefix() + " PRIVMSG " + target + " :" + message + "\r\n";
+    std::string fullMsg = ":" + client.getPrefix() + " PRIVMSG " + target + " " + message + "\r\n";
     channel->broadcastExcept(client.getFd(), fullMsg);
     return true;
 }
@@ -61,7 +61,7 @@ static bool sendMsgToClient(Server &server, Client &client, std::string message,
         sendNumeric(client, "401", server.getName(), target + " :No such nick");
         return false;
     }
-    std::string fullMsg = ":" + client.getPrefix() + " PRIVMSG " + recipient->getNickname() + " :" + message + "\r\n";
+    std::string fullMsg = ":" + client.getPrefix() + " PRIVMSG " + recipient->getNickname() + " " + message + "\r\n";
     send(recipient->getFd(), fullMsg.c_str(), fullMsg.size(), 0);
     return true;
 }
@@ -153,13 +153,6 @@ void Commands::handleTopic(Server &server, Client &client, const std::vector<std
     if (params[2].size() > 0)
     {
         std::string topic = concatinate_params(params, 2);
-        // this is not an error
-        // if (topic[0] != ':')
-        // {
-        //     //change error code
-        //     sendNumeric(client, "numeric", server.getName(), channel->getName() + " :bad topic it doesnt start with :");
-        //     return ;
-        // }
         if (!topic.empty() && topic[0] == ':')
             topic = topic.substr(1);
         channel->setTopic(topic);
